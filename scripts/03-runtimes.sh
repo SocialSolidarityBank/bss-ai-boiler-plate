@@ -10,6 +10,16 @@ step_runtimes() {
   have mise   || die "mise not found — run the 'brew' step first."
   have rustup || die "rustup not found — run the 'brew' step first."
 
+  # Heads-up: a runtime already installed by another method (system .pkg, nvm,
+  # brew, …) is NOT removed — mise installs its own and shadows it via PATH.
+  # Checked here, before mise is on PATH, so any hit is genuinely non-mise.
+  local _t _p
+  for _t in node python go; do
+    if _p="$(command -v "$_t" 2>/dev/null)" && [[ -n "$_p" && "$_p" != *"/.local/share/mise/"* ]]; then
+      warn "existing $_t at $_p — mise will install its own and shadow it (verify later: which -a $_t)"
+    fi
+  done
+
   # --- mise-managed runtimes --------------------------------------------
   info "mise: ${MISE_TOOLS[*]}"
   run mise use -g "${MISE_TOOLS[@]}"

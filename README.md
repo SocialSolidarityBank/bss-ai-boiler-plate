@@ -58,6 +58,43 @@ Every step is **idempotent** — safe to re-run. `~/.zshrc`, `~/.zprofile`, the 
 config, and `~/.docker/config.json` are edited via clearly marked managed blocks that
 get replaced (never duplicated) on re-runs. Existing files you own are preserved.
 
+## Running on a Mac that already has tools
+
+The kit is built for a **fresh machine**, but it's safe to run on a partially
+set-up one — it never overwrites your config. Specifics:
+
+- **Non-destructive by default**: Homebrew/oh-my-zsh/`gjc`/`codex` are skipped if
+  already present; your **git identity** is only set when empty (never clobbered);
+  `brew bundle` skips formulae you already have.
+- **Runtimes are the exception to watch.** node/python/go are installed via **mise**.
+  If you already have node from another source (system `.pkg`, `nvm`, `brew`, …),
+  mise installs **its own** and **shadows yours via PATH** — it does *not* remove or
+  migrate the old one. You'll end up with both; mise's wins in new shells. The
+  `runtimes` step now prints a warning when it detects a non-mise runtime. Verify
+  with `which -a node`.
+- **Hand-edited `~/.zshrc`?** The kit appends its own marked block, so lines you
+  added by hand (e.g. your own `mise activate` / `starship init`) will run *in
+  addition* to the kit's — harmless but redundant. Move your lines into the managed
+  block, or remove the duplicates.
+- **Docker Desktop already installed?** Colima coexists but shares the `docker` CLI
+  and contexts; pick one to avoid confusion (`docker context use`).
+
+## Permissions
+
+The scripts **never call `sudo` themselves.** Elevated access is needed in exactly
+two places, and only on a truly fresh machine:
+
+- **Homebrew install** — the official installer prompts for your Mac password once
+  (`prereqs` step, only when brew is missing).
+- **Xcode Command Line Tools** — a GUI dialog you click "Install" on (only when missing).
+
+Everything else runs in **user space, no sudo**: mise → `~/.local`, rustup →
+`~/.rustup`, bun → `~/.bun`, Homebrew packages (after setup), and all dotfiles in
+`~`. Installing a cask like ghostty into `/Applications` may prompt for your password,
+and first-launch Gatekeeper/permission prompts are normal (on use, not install).
+`gh auth login` is your GitHub account sign-in, not a system permission. Uninstall is
+also fully user-space (Homebrew itself is never removed).
+
 ## Customize
 
 - **Brew packages** — edit [`Brewfile`](./Brewfile), then `./install.sh --only brew`.
