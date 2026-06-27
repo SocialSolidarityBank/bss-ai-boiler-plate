@@ -30,6 +30,7 @@ ROOT="$SELF_DIR"
 # shellcheck source=scripts/lib.sh
 source "$ROOT/scripts/lib.sh"
 
+KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
 : "${WITH_GAJAE:=0}"
 : "${KEEP_CODEX_HOME:=0}"
 
@@ -238,6 +239,7 @@ while [[ $# -gt 0 ]]; do
     --with-gajae)      export WITH_GAJAE=1 ;;
     --keep-codex-home) export KEEP_CODEX_HOME=1 ;;
     --list)            printf '%s\n' "${GROUP_IDS[@]}"; exit 0 ;;
+    -V|--version)      echo "macos-starter-kit $KIT_VERSION"; exit 0 ;;
     -h|--help)         usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -263,7 +265,7 @@ selected() {
 is_macos || die "macOS only."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== macos-starter-kit · uninstall ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== macos-starter-kit v$KIT_VERSION · uninstall ==$_C_RESET"
 info "groups: $(selected | tr '\n' ' ')"
 warn "Homebrew, Xcode CLT, and your git identity are left untouched (remove manually if desired)."
 

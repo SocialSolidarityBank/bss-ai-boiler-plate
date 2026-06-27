@@ -15,6 +15,7 @@
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
 #   --list           List step ids and exit.
+#   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
 #
 # Steps (in order): prereqs brew runtimes shell docker git agents
@@ -66,6 +67,8 @@ fi
 # shellcheck source=scripts/lib.sh
 source "$ROOT/scripts/lib.sh"
 
+KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
+
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
@@ -87,7 +90,7 @@ step_file() {
 }
 # function name for each step is always step_<id>
 
-usage() { sed -n '2,28p' "$ROOT/install.sh" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,21p' "$ROOT/install.sh" | sed 's/^# \{0,1\}//'; }
 
 # ---------------------------------------------------------------------------
 # Arg parsing
@@ -103,6 +106,7 @@ while [[ $# -gt 0 ]]; do
     --skip=*)    SKIP="${1#*=}" ;;
     --no-agents) SKIP="${SKIP:+$SKIP,}agents" ;;
     --list)      printf '%s\n' "${STEP_IDS[@]}"; exit 0 ;;
+    -V|--version) echo "macos-starter-kit $KIT_VERSION"; exit 0 ;;
     -h|--help)   usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -130,7 +134,7 @@ is_macos || die "This kit targets macOS only."
 is_arm   || warn "Not Apple Silicon (arm64) — proceeding, but only tested on M-series."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== macos-starter-kit ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== macos-starter-kit v$KIT_VERSION ==$_C_RESET"
 info "steps: $(selected | tr '\n' ' ')"
 
 # ---------------------------------------------------------------------------

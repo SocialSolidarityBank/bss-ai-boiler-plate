@@ -140,6 +140,18 @@ Safe by design:
 - Removing Hermes deletes its `~/.local/bin/hermes` shim and (after confirming) `~/.hermes`.
 - Only the kit's own managed blocks (`# >>> macos-starter-kit:* >>>`) are stripped from your dotfiles — hand-written lines are untouched.
 
+## Versioning
+
+Released versions are tagged (`vX.Y.Z`) and follow [SemVer](https://semver.org/);
+see [CHANGELOG.md](./CHANGELOG.md). Check your copy with `./install.sh --version`.
+
+Pin the installer to a release instead of `main`:
+
+```sh
+STARTER_KIT_BRANCH=v0.1.0 \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/Heoooooon/macos-starter-kit/v0.1.0/install.sh)"
+```
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

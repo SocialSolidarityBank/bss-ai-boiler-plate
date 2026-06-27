@@ -147,6 +147,18 @@ cmux 같은 cask를 `/Applications`에 설치할 때 비밀번호를 물을 수 
 - dotfiles에서는 키트 자신의 마커 블록(`# >>> macos-starter-kit:* >>>`)만 제거 —
   손으로 쓴 줄은 건드리지 않음.
 
+## 버전 관리
+
+릴리스는 태그(`vX.Y.Z`)로 관리하며 [SemVer](https://semver.org/)를 따릅니다 —
+[CHANGELOG.md](./CHANGELOG.md) 참고. 설치본 버전은 `./install.sh --version`으로 확인.
+
+`main` 대신 특정 릴리스로 고정해서 설치하기:
+
+```sh
+STARTER_KIT_BRANCH=v0.1.0 \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/Heoooooon/macos-starter-kit/v0.1.0/install.sh)"
+```
+
 ## 라이선스
 
 MIT — [LICENSE](./LICENSE) 참고.
