@@ -47,7 +47,9 @@ jobs:
 
       - name: install (non-interactive)
         # plain run: non-tty so Colima start is auto-declined; everything else runs.
-        run: ./install.sh
+        # HERMES=0 skips the heavy external Hermes installer to keep CI lean
+        # (its wiring is still covered by the dry-run job).
+        run: HERMES=0 ./install.sh
 
       - name: verify installed
         run: |

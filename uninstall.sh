@@ -82,6 +82,29 @@ undo_agents() {
     fi
   fi
 
+  # Hermes Agent — remove command shim + (confirm) data dir
+  if have hermes || [[ -d "$HOME/.hermes" ]]; then
+    run rm -f "$HOME/.local/bin/hermes"
+    # node/npm/npx in ~/.local/bin only if they symlink into ~/.hermes
+    local b tgt
+    for b in node npm npx; do
+      tgt="$HOME/.local/bin/$b"
+      if [[ -L "$tgt" ]] && readlink "$tgt" 2>/dev/null | grep -q "/.hermes/"; then
+        run rm -f "$tgt"
+      fi
+    done
+    if [[ -d "$HOME/.hermes" ]]; then
+      if confirm "Remove ~/.hermes (Hermes code, data, sessions)?"; then
+        run rm -rf "$HOME/.hermes"
+      else
+        info "kept ~/.hermes"
+      fi
+    fi
+    ok "Hermes Agent removed"
+  else
+    info "Hermes Agent not installed"
+  fi
+
   # gajae-code (gjc) — protected by default
   if [[ "$WITH_GAJAE" == "1" ]]; then
     if pgrep -f '/.bun/bin/gjc' >/dev/null 2>&1; then

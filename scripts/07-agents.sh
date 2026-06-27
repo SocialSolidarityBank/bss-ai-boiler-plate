@@ -46,4 +46,24 @@ step_agents() {
       warn "lazycodex installer did not complete"
   fi
   info "lazycodex: on first 'codex' launch, APPROVE the omo hooks in the startup review."
+
+  # --- Hermes Agent (Nous Research) -------------------------------------
+  # Official installer: clones NousResearch/hermes-agent, self-manages Python/
+  # Node/Chromium, links `hermes` into ~/.local/bin. Heavy + external, so it's
+  # non-fatal and toggleable with HERMES=0 (CI sets HERMES=0 to stay lean).
+  # Exporting ~/.local/bin first makes Hermes detect PATH and skip editing
+  # ~/.zshrc (the kit's managed block owns that PATH entry instead).
+  export PATH="$HOME/.local/bin:$PATH"
+  if [[ "${HERMES:-1}" != "1" ]]; then
+    info "Skipping Hermes Agent (HERMES=0)"
+  elif have hermes; then
+    ok "Hermes Agent present ($(hermes --version 2>/dev/null | head -1 || echo installed))"
+  elif [[ "$DRY_RUN" == "1" ]]; then
+    info "[dry-run] curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup"
+  else
+    info "Installing Hermes Agent (Nous Research)…"
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup \
+      || warn "Hermes installer did not complete (re-run later: curl … | bash)"
+    info "Hermes: configure with 'hermes setup --portal', then start with 'hermes'."
+  fi
 }

@@ -38,7 +38,7 @@ cd macos-starter-kit
 | **Runtimes** | **mise** → node (LTS), python, go · **rustup** → rust + rust-analyzer · uv · bun |
 | **Containers** | **Colima** + docker / compose / buildx (Docker Desktop not required) |
 | **Git/GitHub** | identity (GitHub noreply email), HTTPS credential helper, sane defaults |
-| **AI agents** | **gajae-code** (`gjc`), **codex**, **lazycodex** (OmO harness) |
+| **AI agents** | **gajae-code** (`gjc`), **codex**, **lazycodex** (OmO), **Hermes Agent** (`hermes`, Nous Research) |
 
 ## Steps & flags
 
@@ -117,6 +117,7 @@ also fully user-space (Homebrew itself is never removed).
 - **gajae-code** (`gjc`) installs globally via **bun** (`bun add -g gajae-code`); its bin lives in `~/.bun/bin` (added to PATH by the shell block).
 - **codex** (`@openai/codex`) installs globally via npm (mise-managed node).
 - **lazycodex** is intentionally **never** installed globally — it always runs through `npx lazycodex-ai …` and layers the OmO harness onto codex.
+- **Hermes Agent** (Nous Research) installs via its official one-liner (`curl …hermes-agent.nousresearch.com/install.sh | bash`) with `--skip-setup`. It self-manages Python/Node/Chromium and links `hermes` into `~/.local/bin`. The install is **non-fatal** (a failure only warns) and can be skipped with `HERMES=0 ./install.sh`. After install, run `hermes setup --portal`, then `hermes`.
 
 ## Uninstall
 
@@ -135,6 +136,7 @@ Safe by design:
 - **Never auto-removed**: Homebrew, Xcode Command Line Tools, and your **git identity**.
 - **gajae-code (`gjc`) is kept** unless you pass `--with-gajae` (refused while `gjc` is running).
 - Removing codex backs up `~/.codex/auth.json` to `~/` first; pass `--keep-codex-home` to leave `~/.codex` intact.
+- Removing Hermes deletes its `~/.local/bin/hermes` shim and (after confirming) `~/.hermes`.
 - Only the kit's own managed blocks (`# >>> macos-starter-kit:* >>>`) are stripped from your dotfiles — hand-written lines are untouched.
 
 ## License
