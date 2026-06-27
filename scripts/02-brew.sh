@@ -18,6 +18,7 @@ step_brew() {
   fi
 
   run brew update --quiet || warn "brew update failed (continuing)"
-  run brew bundle --no-lock --file="$brewfile"
+  # --no-lock was removed in modern Homebrew; bundle no longer writes a lockfile by default
+  run brew bundle install --file="$brewfile"
   ok "Brewfile applied"
 }
