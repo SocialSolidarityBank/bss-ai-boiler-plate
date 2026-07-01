@@ -125,3 +125,53 @@ jobs:
           if grep -q 'lazy-starter-kit' "$HOME/.zshrc" 2>/dev/null; then echo "STILL zshrc block"; fail=1; else echo "gone zshrc block"; fi
           test -x /opt/homebrew/bin/brew && echo "ok   Homebrew preserved" || { echo "Homebrew missing!"; fail=1; }
           exit $fail
+
+  windows-e2e:
+    name: windows install -> uninstall
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ensure winget is available
+        uses: Cyberboss/install-winget@v1
+
+      - name: install (non-interactive; skip Docker Desktop + external agents)
+        shell: pwsh
+        run: .\windows\install.ps1 -Yes -Skip docker,agents
+
+      - name: verify installed
+        shell: pwsh
+        run: |
+          $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
+                      [Environment]::GetEnvironmentVariable('Path','User') + ';' +
+                      "$env:USERPROFILE\.cargo\bin;$env:USERPROFILE\.bun\bin;$env:LOCALAPPDATA\mise\shims"
+          $fail = 0
+          function need($c) {
+            if (Get-Command $c -ErrorAction SilentlyContinue) { Write-Host "ok   $c" }
+            else { Write-Host "MISS $c"; $script:fail = 1 }
+          }
+          foreach ($t in 'git','gh','jq','rg','fd','bat','fzf','starship','mise','uv','rustup','bun') { need $t }
+          & mise reshim 2>$null
+          foreach ($t in 'node','go','python') {
+            $p = (& mise which $t 2>$null)
+            if ($p) { Write-Host "ok   mise:$t" } else { Write-Host "warn mise:$t not resolved" }
+          }
+          $prof = $PROFILE.CurrentUserAllHosts
+          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'lazy-starter-kit:main' -Quiet)) {
+            Write-Host "ok   profile block"
+          } else { Write-Host "MISS profile block"; $fail = 1 }
+          exit $fail
+
+      - name: uninstall (teardown)
+        shell: pwsh
+        run: .\windows\uninstall.ps1 -Yes -WithGajae
+
+      - name: verify removed
+        shell: pwsh
+        run: |
+          $prof = $PROFILE.CurrentUserAllHosts
+          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'lazy-starter-kit' -Quiet)) {
+            Write-Host "STILL profile block"; exit 1
+          }
+          Write-Host "ok   profile block removed"
