@@ -112,6 +112,12 @@ jobs:
             # -Syu (the installer runs the same upgrade anyway under --yes).
             pacman -Syu --noconfirm git tar
           elif command -v zypper >/dev/null 2>&1; then
+            # Tumbleweed is rolling: the container snapshot regularly drifts
+            # behind the mirrors, and mid-publish mirror syncs then 404 on the
+            # exact RPM versions the stale metadata references. `dup` aligns
+            # the container with the current snapshot first (a few minutes,
+            # but it removes the dominant flake in this job).
+            zypper --non-interactive dup || zypper --non-interactive refresh
             zypper --non-interactive install git tar gzip
           fi
           # opensuse/tumbleweed's image config defines NO PATH env. Once a later
