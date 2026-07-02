@@ -90,6 +90,19 @@ inject_block() {
   local end="# <<< ${tag} <<<"
   local content; content="$(cat)"
 
+  # Refuse to touch a file whose markers are unbalanced (crashed run / hand-edit):
+  # rewriting would drop everything between the lone marker and EOF — the user's
+  # own config. grep -qxF = whole-line fixed match, mirroring awk's $0==b/$0==e.
+  if [[ -f "$file" ]]; then
+    local has_begin=0 has_end=0
+    grep -qxF "$begin" "$file" && has_begin=1
+    grep -qxF "$end"   "$file" && has_end=1
+    if [[ "$has_begin" != "$has_end" ]]; then
+      warn "${file/#$HOME/~} has an unmatched lazy-starter-kit '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
+      return 0
+    fi
+  fi
+
   if [[ "$DRY_RUN" == "1" ]]; then
     if [[ -f "$file" ]] && grep -qF "$begin" "$file"; then
       info "[dry-run] would update '$tag' block in ${file/#$HOME/~}"
@@ -101,6 +114,13 @@ inject_block() {
 
   run mkdir -p "$(dirname "$file")"
   [[ -f "$file" ]] || : > "$file"
+
+  # one-time safety backup before the first rewrite of a non-empty user file
+  local bak="$file.lazy-starter-kit.bak"
+  if [[ -s "$file" && ! -e "$bak" ]]; then
+    cp "$file" "$bak"
+    info "backed up ${file/#$HOME/~} -> ${bak/#$HOME/~} (first change)"
+  fi
 
   local tmp; tmp="$(mktemp)"
   # copy everything outside the existing block
@@ -123,11 +143,30 @@ remove_block() {
   local begin="# >>> ${tag} >>>"
   local end="# <<< ${tag} <<<"
   [[ -f "$file" ]] || { info "no ${file/#$HOME/~} (skip '$tag')"; return 0; }
-  grep -qF "$begin" "$file" || { info "no '$tag' block in ${file/#$HOME/~}"; return 0; }
+
+  # Refuse on unbalanced markers (see inject_block): a lone begin marker would
+  # make awk skip to EOF and delete the user's own config below it.
+  local has_begin=0 has_end=0
+  grep -qxF "$begin" "$file" && has_begin=1
+  grep -qxF "$end"   "$file" && has_end=1
+  if [[ "$has_begin" != "$has_end" ]]; then
+    warn "${file/#$HOME/~} has an unmatched lazy-starter-kit '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
+    return 0
+  fi
+  [[ "$has_begin" == 1 ]] || { info "no '$tag' block in ${file/#$HOME/~}"; return 0; }
+
   if [[ "$DRY_RUN" == "1" ]]; then
     info "[dry-run] would remove '$tag' block from ${file/#$HOME/~}"
     return 0
   fi
+
+  # one-time safety backup before the first rewrite of a non-empty user file
+  local bak="$file.lazy-starter-kit.bak"
+  if [[ -s "$file" && ! -e "$bak" ]]; then
+    cp "$file" "$bak"
+    info "backed up ${file/#$HOME/~} -> ${bak/#$HOME/~} (first change)"
+  fi
+
   local tmp; tmp="$(mktemp)"
   awk -v b="$begin" -v e="$end" '
     $0==b {skip=1} skip && $0==e {skip=0; next} !skip {print}
