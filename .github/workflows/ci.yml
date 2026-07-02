@@ -117,9 +117,10 @@ jobs:
           # opensuse/tumbleweed's image config defines NO PATH env. Once a later
           # installer (bun/uv/rustup in the kit's install step) prepends to
           # GITHUB_PATH, the runner rebuilds the step PATH from that empty base
-          # and `docker exec` can no longer even find `sh` (exit 127). Persist
-          # the shell's real default PATH for every subsequent step.
-          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          # and `docker exec` can no longer even find `sh` (exit 127). Seed the
+          # system dirs via GITHUB_PATH (the runner ignores PATH set through
+          # GITHUB_ENV) so every later rebuild keeps them.
+          echo "$PATH" | tr ':' '\n' >> "$GITHUB_PATH"
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
