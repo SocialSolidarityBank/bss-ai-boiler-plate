@@ -60,6 +60,19 @@ _install_rustup() {
   fi
 }
 
+# _setup_gh_apt_repo — add GitHub's signing key + apt source. Any step here can
+# fail on a rootless box or during a cli.github.com outage; because this runs
+# as a guarded command list (see `|| warn` at the call site), `set -e` is
+# suppressed inside it, so a failure returns non-zero instead of aborting.
+_setup_gh_apt_repo() {
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | $SUDO tee /usr/share/keyrings/githubcli-archive-keyring.gpg >/dev/null \
+    && $SUDO chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+         | $SUDO tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
+    && $SUDO apt-get update -y
+}
+
 # GitHub CLI — package name & availability vary; apt needs GitHub's own repo.
 _install_gh() {
   have gh && { ok "gh (GitHub CLI) present"; return 0; }
@@ -70,13 +83,13 @@ _install_gh() {
   fi
   case "$PM" in
     apt)
-      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        | $SUDO tee /usr/share/keyrings/githubcli-archive-keyring.gpg >/dev/null
-      $SUDO chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-        | $SUDO tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-      $SUDO apt-get update -y
-      pm_try gh ;;
+      # gh is best-effort (like pm_try elsewhere): if repo setup fails, warn
+      # and continue rather than aborting the whole install.
+      if _setup_gh_apt_repo; then
+        pm_try gh
+      else
+        warn "could not add GitHub's apt repo — install gh manually later"
+      fi ;;
     dnf|yum|zypper) pm_try gh ;;
     pacman)         pm_try github-cli ;;
     apk)            pm_try github-cli ;;

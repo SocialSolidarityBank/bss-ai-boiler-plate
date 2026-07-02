@@ -22,8 +22,10 @@ step_docker() {
 
   if confirm "Install Docker Engine now? (official get.docker.com script, needs root)"; then
     curl -fsSL https://get.docker.com | run $SUDO sh || { warn "docker install failed"; return 0; }
-    # let the current user run docker without sudo (takes effect on next login)
-    run $SUDO usermod -aG docker "$USER" || warn "could not add $USER to docker group"
+    # let the current user run docker without sudo (takes effect on next login).
+    # bash doesn't set $USER; fall back to `id -un` so `set -u` can't abort here.
+    _u="${USER:-$(id -un)}"
+    run $SUDO usermod -aG docker "$_u" || warn "could not add $_u to docker group"
     # enable + start the daemon where systemd is available
     if have systemctl; then
       run $SUDO systemctl enable --now docker || warn "could not enable docker service"

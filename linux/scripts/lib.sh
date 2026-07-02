@@ -54,6 +54,18 @@ else
   SUDO=""
 fi
 
+# can_sudo — true when system package installs can actually escalate:
+#   * we are root, OR
+#   * sudo exists AND we can obtain privileges (cached creds / NOPASSWD, or a
+#     tty to prompt on). A non-interactive box where `sudo -n true` fails cannot
+#     escalate, so callers should skip system packages instead of aborting.
+can_sudo() {
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] && return 0
+  [[ -n "$SUDO" ]] || return 1
+  sudo -n true >/dev/null 2>&1 && return 0   # passwordless / cached creds
+  is_tty                                      # otherwise we need a tty to prompt
+}
+
 # ---------------------------------------------------------------------------
 # Distro / package-manager detection
 # ---------------------------------------------------------------------------
@@ -82,14 +94,24 @@ pm_refresh() {
   [[ "$_PM_REFRESHED" == "1" ]] && return 0
   _PM_REFRESHED=1
   case "$PM" in
-    apt)    run $SUDO apt-get update -y ;;
+    apt)    run $SUDO apt-get update -y || true ;;
     dnf)    run $SUDO dnf -y makecache || true ;;
     yum)    run $SUDO yum -y makecache || true ;;
     # Arch: a full -Syu is required — installing after a bare -Sy is a
-    # partial upgrade (unsupported, can break glibc/openssl mismatches).
-    pacman) run $SUDO pacman -Syu --noconfirm ;;
+    # partial upgrade (unsupported, can break glibc/openssl mismatches). We
+    # therefore never do a bare -Sy. A full upgrade touches the whole system,
+    # so it's confirm-gated (auto-yes under --yes, declined non-interactively).
+    # Declined path: skip the refresh entirely and let the later `pacman -S`
+    # installs run against the CURRENT sync DBs — this avoids the partial-
+    # upgrade hazard at the cost of possibly-staler package versions.
+    pacman)
+      if confirm "Arch requires a full system upgrade (pacman -Syu) before installing. Run it now?"; then
+        run $SUDO pacman -Syu --noconfirm || true
+      else
+        warn "skipping 'pacman -Syu' — installs will use the current sync DBs (no partial-upgrade refresh)"
+      fi ;;
     zypper) run $SUDO zypper --non-interactive refresh || true ;;
-    apk)    run $SUDO apk update ;;
+    apk)    run $SUDO apk update || true ;;
     *)      warn "no supported package manager detected" ;;
   esac
 }
@@ -173,6 +195,19 @@ inject_block() {
   local end="# <<< ${tag} <<<"
   local content; content="$(cat)"
 
+  # Refuse to touch a file whose markers are unbalanced (crashed run / hand-edit):
+  # rewriting would drop everything between the lone marker and EOF — the user's
+  # own config. grep -qxF = whole-line fixed match, mirroring awk's $0==b/$0==e.
+  if [[ -f "$file" ]]; then
+    local has_begin=0 has_end=0
+    grep -qxF "$begin" "$file" && has_begin=1
+    grep -qxF "$end"   "$file" && has_end=1
+    if [[ "$has_begin" != "$has_end" ]]; then
+      warn "${file/#$HOME/~} has an unmatched lazy-starter-kit '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
+      return 0
+    fi
+  fi
+
   if [[ "$DRY_RUN" == "1" ]]; then
     if [[ -f "$file" ]] && grep -qF "$begin" "$file"; then
       info "[dry-run] would update '$tag' block in ${file/#$HOME/~}"
@@ -184,6 +219,13 @@ inject_block() {
 
   run mkdir -p "$(dirname "$file")"
   [[ -f "$file" ]] || : > "$file"
+
+  # one-time safety backup before the first rewrite of a non-empty user file
+  local bak="$file.lazy-starter-kit.bak"
+  if [[ -s "$file" && ! -e "$bak" ]]; then
+    cp "$file" "$bak"
+    info "backed up ${file/#$HOME/~} -> ${bak/#$HOME/~} (first change)"
+  fi
 
   local tmp; tmp="$(mktemp)"
   # copy everything outside the existing block
@@ -205,11 +247,30 @@ remove_block() {
   local begin="# >>> ${tag} >>>"
   local end="# <<< ${tag} <<<"
   [[ -f "$file" ]] || { info "no ${file/#$HOME/~} (skip '$tag')"; return 0; }
-  grep -qF "$begin" "$file" || { info "no '$tag' block in ${file/#$HOME/~}"; return 0; }
+
+  # Refuse on unbalanced markers (see inject_block): a lone begin marker would
+  # make awk skip to EOF and delete the user's own config below it.
+  local has_begin=0 has_end=0
+  grep -qxF "$begin" "$file" && has_begin=1
+  grep -qxF "$end"   "$file" && has_end=1
+  if [[ "$has_begin" != "$has_end" ]]; then
+    warn "${file/#$HOME/~} has an unmatched lazy-starter-kit '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
+    return 0
+  fi
+  [[ "$has_begin" == 1 ]] || { info "no '$tag' block in ${file/#$HOME/~}"; return 0; }
+
   if [[ "$DRY_RUN" == "1" ]]; then
     info "[dry-run] would remove '$tag' block from ${file/#$HOME/~}"
     return 0
   fi
+
+  # one-time safety backup before the first rewrite of a non-empty user file
+  local bak="$file.lazy-starter-kit.bak"
+  if [[ -s "$file" && ! -e "$bak" ]]; then
+    cp "$file" "$bak"
+    info "backed up ${file/#$HOME/~} -> ${bak/#$HOME/~} (first change)"
+  fi
+
   local tmp; tmp="$(mktemp)"
   awk -v b="$begin" -v e="$end" '
     $0==b {skip=1} skip && $0==e {skip=0; next} !skip {print}
