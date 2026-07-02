@@ -198,8 +198,9 @@ curl -fsSL https://raw.githubusercontent.com/Heoooooon/lazy-starter-kit/main/lin
 > 정말 걱정되면 **먼저 `--dry-run`(맥/리눅스) 또는 `-DryRun`(윈도우)** 으로 "무엇을 할지"만 확인하세요.
 > 남의/회사 메인 PC라면 **여분 PC나 가상머신(VM)에서 먼저** 테스트하는 걸 권합니다.
 
-> **검증**: macOS·Windows(Server 2025)·Ubuntu·Fedora·openSUSE·Arch에서 설치→검증→제거를
-> 실제로 자동 테스트(CI)로 통과합니다.
+> **검증**: **macOS·Windows(Server 2025)·Ubuntu** 는 커밋마다 설치→검증→제거를
+> 자동 테스트(CI)로 돌립니다. **Fedora·openSUSE·Arch** 는 CI에는 없고, 손으로
+> 직접 설치→검증→제거(end-to-end)까지 확인했어요.
 
 ---
 
