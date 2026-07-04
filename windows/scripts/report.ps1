@@ -56,7 +56,8 @@ function New-HelperReport {
   $history = Join-Path $helperHome 'history.jsonl'
   $data = Get-Content $statePath -Raw | ConvertFrom-Json
   $phrases = @('BSS AI Helper 실행해줘', 'AI 세팅 이어서 해줘', '개발환경 설치 도와줘')
-  if ($data.restartPhrases) { $phrases = @($data.restartPhrases) }
+  $statePhrases = Get-ReportProperty $data 'restartPhrases'
+  if ($statePhrases) { $phrases = @($statePhrases) }
   $tools = @($data.tools)
   $installed = @($tools | Where-Object { $_.status -in @('installed','complete','completed') })
   $notInstalled = @($tools | Where-Object { $_.status -notin @('installed','complete','completed') })

@@ -251,6 +251,12 @@ try {
   Assert-NotContains 'status-only' $statusResult.Output 'bss-ai-boilerplate v' 'no classic installer execution in status-only mode'
   Assert-Contract 'status-only' (-not (Test-Path (Join-Path $status.Helper 'state.json'))) 'no state file written by status-only mode' $statusResult.Output
 
+  $freshReport = New-Sandbox
+  $freshReportResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'report') -Sandbox $freshReport
+  Assert-Contract 'fresh-state report' ($freshReportResult.ExitCode -eq 0) 'exit 0 for report generation from a fresh helper state' $freshReportResult.Output
+  Assert-Contract 'fresh-state report' (Test-Path (Join-Path $freshReport.Helper 'latest-report.md')) 'latest-report.md is generated from a fresh helper state' $freshReportResult.Output
+  Assert-Contract 'fresh-state report' (Test-Path (Join-Path $freshReport.Helper 'manual\index.html')) 'manual/index.html is generated from a fresh helper state' $freshReportResult.Output
+
   $wizard = New-Sandbox
   $wizardResult = Invoke-Installer -Arguments @('-Wizard') -InputText "1`n" -Sandbox $wizard
   Assert-Contract 'explicit wizard' ($wizardResult.ExitCode -eq 0) 'exit 0 when redirected input chooses status' $wizardResult.Output
