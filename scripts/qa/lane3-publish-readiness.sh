@@ -15,6 +15,8 @@ case "$mode" in
     after="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
     [[ "$before" == "$after" ]] || fail "publish readiness mutated origin"
     assert_contains "$evidence" 'github.com/socialsolidaritybank/bss-ai-helper'
+    assert_contains "$evidence" 'Stale public release references: none'
+    assert_contains "$evidence" 'Profile marker compatibility: documented'
     assert_contains "$evidence" 'commit/push/create'
     note "PASS G013-TARGET $evidence"
     ;;
@@ -34,7 +36,8 @@ case "$mode" in
       printf 'current origin: %s\n' "$current"
       "$ROOT/scripts/11-publish-readiness.sh" --check
     } > "$evidence" 2>&1
-    assert_contains "$evidence" 'foxion37/lazy-starter-kit|socialsolidaritybank/bss-ai-helper'
+    assert_contains "$evidence" 'socialsolidaritybank/bss-ai-helper'
+    assert_not_contains "$evidence" 'Heoooooon|lazy-starter-kit'
     assert_contains "$evidence" 'pending|보류|not changed|바꾸지 않았습니다'
     note "PASS G013-REMOTE $evidence"
     ;;

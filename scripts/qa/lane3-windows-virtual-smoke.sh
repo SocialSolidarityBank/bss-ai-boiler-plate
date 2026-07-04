@@ -23,6 +23,8 @@ steps=(
   "05-docker.ps1:Step-Docker"
   "06-git.ps1:Step-Git"
   "07-agents.ps1:Step-Agents"
+  "09-codex-resume.ps1:Step-Resume"
+  "report.ps1:Step-Report"
 )
 
 set +e
@@ -38,12 +40,14 @@ set +e
   assert_contains "$install" '\[switch\]\$List'
   assert_contains "$install" '\[switch\]\$Status'
   assert_contains "$install" '\[switch\]\$Classic'
+  assert_contains "$install" '\[switch\]\$Wizard'
   assert_contains "$install" 'https://github.com/socialsolidaritybank/bss-ai-helper.git'
-  assert_fixed "$install" "\$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents')"
+  assert_fixed "$install" "\$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume', 'report')"
   assert_fixed "$install" 'if ($List)'
   assert_fixed "$install" 'Write-Output $_'
   assert_fixed "$install" 'if ($Status)'
   assert_fixed "$install" 'Show-HelperStatus'
+  assert_fixed "$install" 'Input is redirected, so the question wizard is not started automatically.'
   assert_fixed "$install" 'if ($script:DryRun)'
   assert_fixed "$install" 'DRY-RUN: no changes will be made.'
   assert_fixed "$install" 'if (-not (Test-IsWindows))'
@@ -63,8 +67,8 @@ set +e
     assert_contains "$path" "function $func"
   done
 
-  assert_contains "$ROOT/windows/scripts/01-prereqs.ps1" 'winget is required'
-  assert_contains "$ROOT/windows/scripts/01-prereqs.ps1" 'if \(-not \$script:DryRun\)'
+  assert_contains "$ROOT/windows/scripts/01-prereqs.ps1" 'Assert-WingetReady'
+  assert_contains "$ROOT/windows/scripts/01-prereqs.ps1" 'install or repair App Installer'
   assert_contains "$ROOT/windows/scripts/02-packages.ps1" 'Git.Git'
   assert_contains "$ROOT/windows/scripts/02-packages.ps1" 'GitHub.cli'
   assert_contains "$ROOT/windows/scripts/02-packages.ps1" 'jqlang.jq'
@@ -91,7 +95,8 @@ set +e
   assert_contains "$readme" 'irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-helper/main/windows/install.ps1 \| iex'
   assert_contains "$readme" 'PowerShell'
   assert_contains "$readme" 'winget'
-  assert_contains "$readme" 'foxion37/lazy-starter-kit'
+  assert_contains "$readme" 'bss-ai-boilerplate:main'
+  assert_contains "$readme" '-Wizard'
 
   printf 'windows virtual smoke checks passed\n'
 ) > "$evidence" 2>&1

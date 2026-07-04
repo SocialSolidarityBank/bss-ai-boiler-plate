@@ -57,6 +57,135 @@ jobs:
           chmod +x scripts/qa/*.sh scripts/09-codex-resume.sh scripts/10-report.sh scripts/11-publish-readiness.sh
           scripts/qa/lane3-all.sh
 
+  docs-readiness:
+    name: docs/readiness lane
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: run docs and release-readiness checks
+        env:
+          BSS_AI_HELPER_HOME: ${{ runner.temp }}/bss-ai-helper-docs-home
+        run: |
+          chmod +x scripts/qa/*.sh scripts/10-report.sh scripts/11-publish-readiness.sh
+          scripts/qa/lane3-docs-content.sh first-run
+          scripts/qa/lane3-docs-content.sh nondev
+          scripts/qa/lane3-docs-content.sh advanced
+          scripts/qa/lane3-publish-readiness.sh target
+          scripts/qa/lane3-publish-readiness.sh no-secrets
+          scripts/qa/lane3-publish-readiness.sh remote
+
+  installer-contract-posix:
+    name: POSIX installer contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: shell syntax sweep
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(
+            install.sh
+            uninstall.sh
+            linux/install.sh
+            linux/uninstall.sh
+            tests/install-contract/posix.sh
+            config/zshrc.block.sh
+            linux/config/zshrc.block.sh
+            lib/*.sh
+            scripts/*.sh
+            scripts/qa/*.sh
+            linux/scripts/*.sh
+          )
+          bash -n "${files[@]}"
+      - name: run POSIX installer contract tests
+        shell: bash
+        run: |
+          chmod +x tests/install-contract/posix.sh
+          tests/install-contract/posix.sh
+
+  installer-contract-windows:
+    name: Windows installer contract (PowerShell 5.1)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: parse Windows scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $fail = 0
+          $files = @()
+          $files += Get-ChildItem -Path windows -Recurse -Filter *.ps1 -File
+          $files += Get-Item -LiteralPath tests\install-contract\windows.ps1
+          foreach ($file in $files) {
+            $tokens = $null; $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              $fail = 1
+              Write-Host "FAIL $($file.FullName)"
+              $errors | ForEach-Object { Write-Host "  $($_.Message) (line $($_.Extent.StartLineNumber))" }
+            } else {
+              Write-Host "ok   $($file.FullName)"
+            }
+          }
+          exit $fail
+      - name: run Windows installer contract tests
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\install-contract\windows.ps1
+
+  linux-dry-run-classic:
+    name: Linux dry-run/classic smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: run bounded dry-run and classic checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/home" "$tmp/helper"
+          env HOME="$tmp/home" BSS_AI_HELPER_HOME="$tmp/helper" HERMES=0 ./linux/install.sh --classic --dry-run --only agents
+          env HOME="$tmp/home" BSS_AI_HELPER_HOME="$tmp/helper" HERMES=0 ./linux/install.sh --dry-run --only prereqs
+
+  resume-report-smoke:
+    name: resume/report smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: POSIX resume/report smoke
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/home" "$tmp/helper"
+          export HOME="$tmp/home"
+          export BSS_AI_HELPER_HOME="$tmp/helper"
+          ./linux/install.sh --classic --only resume,report
+          PATH="$tmp/helper/bin:$PATH" bss-ai-helper --status
+          test -s "$tmp/helper/latest-report.md"
+          test -s "$tmp/helper/manual/index.html"
+      - name: Windows resume/report smoke
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'bss-ai-helper-smoke'
+          $home = Join-Path $root 'home'
+          $helper = Join-Path $root 'helper'
+          New-Item -ItemType Directory -Force -Path $home, $helper | Out-Null
+          $env:USERPROFILE = $home
+          $env:HOME = $home
+          $env:BSS_AI_HELPER_HOME = $helper
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\install.ps1 -Classic -Only resume,report
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $helper 'bin\bss-ai-helper.ps1') --status
+          if (-not (Test-Path (Join-Path $helper 'latest-report.md'))) { throw 'missing latest-report.md' }
+          if (-not (Test-Path (Join-Path $helper 'manual\index.html'))) { throw 'missing manual/index.html' }
+
   linux-e2e:
     name: linux install -> uninstall (ubuntu)
     runs-on: ubuntu-latest

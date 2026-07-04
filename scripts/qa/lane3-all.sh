@@ -21,9 +21,20 @@ check_ci() {
   {
     grep -n "lane3-all.sh" "$ROOT/.github/workflows/ci.yml"
     grep -n "BSS_AI_HELPER_HOME" "$ROOT/.github/workflows/ci.yml"
+    grep -n "docs-readiness" "$ROOT/.github/workflows/ci.yml"
+    grep -n "installer-contract-posix" "$ROOT/.github/workflows/ci.yml"
+    grep -n "installer-contract-windows" "$ROOT/.github/workflows/ci.yml"
+    grep -n "linux-dry-run-classic" "$ROOT/.github/workflows/ci.yml"
+    grep -n "resume-report-smoke" "$ROOT/.github/workflows/ci.yml"
+    grep -n "tests/install-contract/posix.sh" "$ROOT/.github/workflows/ci.yml"
+    grep -n "tests.install-contract.windows.ps1" "$ROOT/.github/workflows/ci.yml" || grep -n "tests\\\\install-contract\\\\windows.ps1" "$ROOT/.github/workflows/ci.yml"
+    grep -n "powershell.exe -NoProfile -ExecutionPolicy Bypass" "$ROOT/.github/workflows/ci.yml"
   } > "$evidence" 2>&1
   if grep -n "gh auth login\\|codex login\\|claude login" "$ROOT/.github/workflows/ci.yml" >> "$evidence" 2>&1; then
     fail "CI lane 3 requires external auth; see $evidence"
+  fi
+  if grep -n "continue-on-error:" "$ROOT/.github/workflows/ci.yml" >> "$evidence" 2>&1; then
+    fail "CI has non-gating jobs hidden with continue-on-error; see $evidence"
   fi
   note "PASS G012-CI $evidence"
 }
