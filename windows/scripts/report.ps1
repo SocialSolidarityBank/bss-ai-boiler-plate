@@ -1,14 +1,14 @@
-. (Join-Path $PSScriptRoot 'state.ps1')
+﻿. (Join-Path $PSScriptRoot 'state.ps1')
 
 function New-HelperReport {
-  $home = Get-HelperHome
+  $helperHome = Get-HelperHome
   $statePath = Get-StatePath
   if (-not (Test-Path $statePath)) { throw "state file not found: $statePath" }
-  New-Item -ItemType Directory -Force -Path $home | Out-Null
-  New-Item -ItemType Directory -Force -Path (Join-Path $home 'manual') | Out-Null
-  $report = Join-Path $home 'latest-report.md'
-  $manual = Join-Path $home 'manual\index.html'
-  $history = Join-Path $home 'history.jsonl'
+  New-Item -ItemType Directory -Force -Path $helperHome | Out-Null
+  New-Item -ItemType Directory -Force -Path (Join-Path $helperHome 'manual') | Out-Null
+  $report = Join-Path $helperHome 'latest-report.md'
+  $manual = Join-Path $helperHome 'manual\index.html'
+  $history = Join-Path $helperHome 'history.jsonl'
   $data = Get-Content $statePath -Raw | ConvertFrom-Json
   $phrases = @('BSS AI Helper 실행해줘', 'AI 세팅 이어서 해줘', '개발환경 설치 도와줘')
   if ($data.restartPhrases) { $phrases = @($data.restartPhrases) }

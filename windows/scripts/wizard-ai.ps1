@@ -1,4 +1,4 @@
-function Convert-SafeAiServiceNames {
+﻿function Convert-SafeAiServiceNames {
   param([string]$Raw)
   $safe = @()
   foreach ($item in ($Raw -split ',')) {

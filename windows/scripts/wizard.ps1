@@ -1,4 +1,4 @@
-function Read-WizardChoice {
+﻿function Read-WizardChoice {
   param([string]$Prompt, [string]$Default = '')
   if ($script:AssumeYes) { return $Default }
   if ([Console]::IsInputRedirected) {

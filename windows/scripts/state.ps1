@@ -1,4 +1,4 @@
-function Get-HelperHome {
+﻿function Get-HelperHome {
   if ($env:BSS_AI_HELPER_HOME) { return $env:BSS_AI_HELPER_HOME }
   return (Join-Path $HOME '.bss-ai-helper')
 }
