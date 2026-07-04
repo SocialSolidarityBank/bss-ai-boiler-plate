@@ -15,17 +15,24 @@ function New-HelperState {
 function ConvertTo-PlainObject {
   param($Value)
   if ($null -eq $Value) { return $null }
+  if ($Value -is [string]) { return $Value }
   if ($Value -is [System.Collections.IDictionary]) {
     $hash = @{}
     foreach ($key in $Value.Keys) { $hash[$key] = ConvertTo-PlainObject -Value $Value[$key] }
     return $hash
   }
-  if ($Value -is [System.Array]) {
+  if ($Value -is [System.Collections.IEnumerable]) {
     return @($Value | ForEach-Object { ConvertTo-PlainObject -Value $_ })
   }
-  if ($Value.PSObject -and $Value.PSObject.Properties.Count -gt 0 -and -not ($Value -is [string])) {
+  $properties = @($Value.PSObject.Properties | ForEach-Object { $_ })
+  if ($Value -is [pscustomobject]) {
     $hash = @{}
-    foreach ($prop in $Value.PSObject.Properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
+    foreach ($prop in $properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
+    return $hash
+  }
+  if ($properties.Count -gt 0) {
+    $hash = @{}
+    foreach ($prop in $properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
     return $hash
   }
   return $Value
@@ -40,11 +47,11 @@ function Read-HelperState {
     $parsed = Get-Content $path -Raw | ConvertFrom-Json
     $state = ConvertTo-PlainObject -Value $parsed
     if (-not $state.ContainsKey('version')) { $state['version'] = 1 }
-    if (-not $state.ContainsKey('steps')) { $state['steps'] = @{} }
-    if (-not $state.ContainsKey('ai_services')) { $state['ai_services'] = @() }
-    if (-not $state.ContainsKey('aiServices')) { $state['aiServices'] = @($state['ai_services']) }
-    if (-not $state.ContainsKey('addons')) { $state['addons'] = @{} }
-    if (-not $state.ContainsKey('tools')) { $state['tools'] = @() }
+    if (-not $state.ContainsKey('steps') -or $null -eq $state['steps']) { $state['steps'] = @{} }
+    if (-not $state.ContainsKey('ai_services') -or $null -eq $state['ai_services']) { $state['ai_services'] = @() }
+    if (-not $state.ContainsKey('aiServices') -or $null -eq $state['aiServices']) { $state['aiServices'] = @($state['ai_services']) }
+    if (-not $state.ContainsKey('addons') -or $null -eq $state['addons']) { $state['addons'] = @{} }
+    if (-not $state.ContainsKey('tools') -or $null -eq $state['tools']) { $state['tools'] = @() }
     return $state
   } catch {
     Write-Warn "진행 상태 파일을 읽을 수 없습니다. 파일은 지우지 않았습니다."

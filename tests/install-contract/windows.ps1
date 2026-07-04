@@ -257,6 +257,19 @@ try {
   Assert-Contract 'fresh-state report' (Test-Path (Join-Path $freshReport.Helper 'latest-report.md')) 'latest-report.md is generated from a fresh helper state' $freshReportResult.Output
   Assert-Contract 'fresh-state report' (Test-Path (Join-Path $freshReport.Helper 'manual\index.html')) 'manual/index.html is generated from a fresh helper state' $freshReportResult.Output
 
+  $resumeReportStatus = New-Sandbox
+  $resumeReportResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'resume,report') -Sandbox $resumeReportStatus
+  Assert-Contract 'resume-report status read' ($resumeReportResult.ExitCode -eq 0) 'exit 0 for isolated resume/report generation' $resumeReportResult.Output
+  Assert-Contract 'resume-report status read' (Test-Path (Join-Path $resumeReportStatus.Helper 'state.json')) 'resume/report writes helper state in the sandbox' $resumeReportResult.Output
+  $resumeReportInstallerStatus = Invoke-Installer -Arguments @('-Status') -Sandbox $resumeReportStatus
+  Assert-Contract 'resume-report status read' ($resumeReportInstallerStatus.ExitCode -eq 0) 'installer -Status exits 0 after generated resume/report state' $resumeReportInstallerStatus.Output
+  Assert-NotContains 'resume-report status read' $resumeReportInstallerStatus.Output 'WARNING:|0/7' 'installer -Status reads generated state instead of warning and showing all pending'
+  Assert-Contains 'resume-report status read' $resumeReportInstallerStatus.Output '2/7' 'installer -Status shows resume/report progress'
+  $resumeReportWrapperStatus = Invoke-GeneratedHelper -Arguments @('--status') -Sandbox $resumeReportStatus
+  Assert-Contract 'resume-report wrapper status read' ($resumeReportWrapperStatus.ExitCode -eq 0) 'generated bss-ai-helper --status exits 0 after resume/report state' $resumeReportWrapperStatus.Output
+  Assert-NotContains 'resume-report wrapper status read' $resumeReportWrapperStatus.Output 'WARNING:|0/7' 'generated helper --status reads generated state instead of warning and showing all pending'
+  Assert-Contains 'resume-report wrapper status read' $resumeReportWrapperStatus.Output '2/7' 'generated helper --status shows resume/report progress'
+
   $wizard = New-Sandbox
   $wizardResult = Invoke-Installer -Arguments @('-Wizard') -InputText "1`n" -Sandbox $wizard
   Assert-Contract 'explicit wizard' ($wizardResult.ExitCode -eq 0) 'exit 0 when redirected input chooses status' $wizardResult.Output
