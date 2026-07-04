@@ -98,13 +98,38 @@ SH
   chmod +x "$sandbox/bin/$name"
 }
 
+add_fake_linux_uname() {
+  local sandbox="$1"
+  cat > "$sandbox/bin/uname" <<'SH'
+#!/usr/bin/env bash
+printf '%s %s\n' "$(basename "$0")" "$*" >> "${BSS_CONTRACT_COMMAND_LOG:?}"
+case "${1:-}" in
+  -s) printf 'Linux\n' ;;
+  *) printf 'Linux\n' ;;
+esac
+SH
+  chmod +x "$sandbox/bin/uname"
+}
+
 run_installer() {
   local sandbox="$1" input="$2"
   shift 2
   local out="$sandbox/output.txt"
   local code_file="$sandbox/code.txt"
+  local docker_env=()
+  if [[ -v BSS_INSTALL_DOCKER ]]; then
+    docker_env+=(BSS_INSTALL_DOCKER="$BSS_INSTALL_DOCKER")
+  else
+    docker_env+=(-u BSS_INSTALL_DOCKER)
+  fi
+  if [[ -v BSS_AI_HELPER_INSTALL_DOCKER ]]; then
+    docker_env+=(BSS_AI_HELPER_INSTALL_DOCKER="$BSS_AI_HELPER_INSTALL_DOCKER")
+  else
+    docker_env+=(-u BSS_AI_HELPER_INSTALL_DOCKER)
+  fi
   set +e
   printf '%s' "$input" | env \
+    "${docker_env[@]}" \
     HOME="$sandbox/home" \
     BSS_AI_HELPER_HOME="$sandbox/helper" \
     BSS_CONTRACT_COMMAND_LOG="$sandbox/commands.log" \
@@ -114,7 +139,6 @@ run_installer() {
     BSS_AI_INSTALL_EXTRAS="${BSS_AI_INSTALL_EXTRAS:-1}" \
     BSS_AI_HELPER_FORCE_INSTALL_PREVIEW="${BSS_AI_HELPER_FORCE_INSTALL_PREVIEW:-1}" \
     BSS_AI_HELPER_TTY="${BSS_AI_HELPER_TTY:-}" \
-    BSS_INSTALL_DOCKER="${BSS_INSTALL_DOCKER:-0}" \
     HERMES="${HERMES:-1}" \
     timeout 20s "$ROOT/linux/install.sh" "$@" >"$out" 2>&1
   local code=$?
@@ -403,6 +427,37 @@ docker_opt_in_log="$(command_log_of "$docker_opt_in_box")"
 assert_contract "docker explicit opt-in dry-run" "$([[ "$docker_opt_in_code" == "0" ]]; echo $?)" "explicit Docker opt-in dry-run exits 0" "$docker_opt_in_output"
 assert_contains "docker explicit opt-in dry-run" "$docker_opt_in_output" "get.docker.com|usermod -aG docker" "Docker opt-in dry-run previews Docker commands"
 assert_contract "docker explicit opt-in dry-run" "$([[ -z "$docker_opt_in_log" ]]; echo $?)" "Docker opt-in dry-run does not execute mocked commands" "$docker_opt_in_log"
+
+docker_alias_box="$(new_sandbox)"
+add_fake_linux_uname "$docker_alias_box"
+for name in curl usermod systemctl; do
+  add_logged_command "$docker_alias_box" "$name"
+done
+BSS_AI_HELPER_INSTALL_DOCKER=1
+export BSS_AI_HELPER_INSTALL_DOCKER
+docker_alias_output="$(run_installer "$docker_alias_box" "" --classic --dry-run --yes --only docker)"
+unset BSS_AI_HELPER_INSTALL_DOCKER
+docker_alias_code="$(exit_code_of "$docker_alias_box")"
+docker_alias_log="$(command_log_of "$docker_alias_box")"
+assert_contract "docker helper alias opt-in dry-run" "$([[ "$docker_alias_code" == "0" ]]; echo $?)" "helper Docker opt-in alias dry-run exits 0" "$docker_alias_output"
+assert_contains "docker helper alias opt-in dry-run" "$docker_alias_output" "get.docker.com|usermod -aG docker" "BSS_AI_HELPER_INSTALL_DOCKER=1 opts into Docker preview when BSS_INSTALL_DOCKER is unset"
+assert_not_contains "docker helper alias opt-in dry-run" "$docker_alias_log" "^(curl|usermod|systemctl) " "Docker alias opt-in dry-run does not execute mocked install commands"
+
+docker_precedence_box="$(new_sandbox)"
+add_fake_linux_uname "$docker_precedence_box"
+for name in curl usermod systemctl; do
+  add_logged_command "$docker_precedence_box" "$name"
+done
+BSS_INSTALL_DOCKER=0
+BSS_AI_HELPER_INSTALL_DOCKER=1
+export BSS_INSTALL_DOCKER BSS_AI_HELPER_INSTALL_DOCKER
+docker_precedence_output="$(run_installer "$docker_precedence_box" "" --classic --dry-run --yes --only docker)"
+unset BSS_INSTALL_DOCKER BSS_AI_HELPER_INSTALL_DOCKER
+docker_precedence_code="$(exit_code_of "$docker_precedence_box")"
+docker_precedence_log="$(command_log_of "$docker_precedence_box")"
+assert_contract "docker primary env precedence" "$([[ "$docker_precedence_code" == "0" ]]; echo $?)" "explicit BSS_INSTALL_DOCKER=0 exits 0 even when helper alias is 1" "$docker_precedence_output"
+assert_contains "docker primary env precedence" "$docker_precedence_output" "Docker.*opt-in|--with-docker|BSS_INSTALL_DOCKER" "explicit BSS_INSTALL_DOCKER=0 keeps Docker skipped ahead of helper alias"
+assert_not_contains "docker primary env precedence" "$docker_precedence_log" "^(curl|usermod|systemctl) " "Docker primary env precedence dry-run does not execute mocked install commands"
 
 if [[ "${#FAILURES[@]}" -gt 0 ]]; then
   printf '%s\n' "${FAILURES[@]}" >&2

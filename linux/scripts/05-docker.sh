@@ -20,7 +20,7 @@ step_docker() {
   fi
 
   if [[ "$ASSUME_YES" == "1" ]] && ! docker_opted_in; then
-    info "Docker is explicit opt-in; skipping under --yes. Re-run with --with-docker or BSS_INSTALL_DOCKER=1 to install it."
+    info "Docker is explicit opt-in; skipping under --yes. Re-run with --with-docker, BSS_INSTALL_DOCKER=1, or BSS_AI_HELPER_INSTALL_DOCKER=1 to install it."
     return 0
   fi
 

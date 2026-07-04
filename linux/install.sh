@@ -103,7 +103,6 @@ usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$ROOT/inst
 # Arg parsing
 # ---------------------------------------------------------------------------
 ONLY=""; SKIP=""; STATUS=0; RESET_STATE=0; WIZARD=0; CLASSIC=0; DIRECT_MODE=0
-: "${BSS_INSTALL_DOCKER:=0}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)   export DRY_RUN=1 ;;
