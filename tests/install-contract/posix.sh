@@ -179,6 +179,26 @@ command_log_of() {
   if [[ -f "$sandbox/commands.log" ]]; then cat "$sandbox/commands.log"; fi
 }
 
+run_posix_helper() {
+  local sandbox="$1"
+  shift
+  local out="$sandbox/output.txt"
+  local code_file="$sandbox/code.txt"
+  set +e
+  local helper_path="${BSS_CONTRACT_HELPER_PATH:-$sandbox/bin:$PATH}"
+  env \
+    HOME="$sandbox/home" \
+    BSS_AI_HELPER_HOME="$sandbox/helper" \
+    BSS_CONTRACT_COMMAND_LOG="$sandbox/commands.log" \
+    PATH="$helper_path" \
+    timeout 20s "$@" >"$out" 2>&1
+  local code=$?
+  set -e
+  printf '%s\n' "$code" > "$code_file"
+  cat "$out"
+  return 0
+}
+
 check_shell_syntax() {
   local files=(
     "$ROOT/install.sh"
@@ -225,6 +245,11 @@ trap cleanup EXIT
 
 check_shell_syntax
 
+root_list="$("$ROOT/install.sh" --list)"
+assert_contains "root step list" "$root_list" "^resume$" "root installer exposes the resume step"
+linux_list="$("$ROOT/linux/install.sh" --list)"
+assert_contains "linux step list" "$linux_list" "^resume$" "Linux installer exposes the resume step"
+
 status_box="$(new_sandbox)"
 status_output="$(run_installer "$status_box" "" --status)"
 status_code="$(exit_code_of "$status_box")"
@@ -246,6 +271,21 @@ assert_contains "explicit wizard" "$wizard_output" "redirected.*wizard.*tty|tty.
 assert_contains "explicit wizard" "$wizard_output" "1\\)" "status menu choice"
 assert_contains "explicit wizard" "$wizard_output" "4\\)" "classic/direct menu choice"
 assert_contract "explicit wizard" "$([[ -f "$wizard_box/helper/state.json" ]]; echo $?)" "isolated helper state is created only under the sandbox" "$wizard_output"
+
+resume_box="$(new_sandbox)"
+BSS_CONTRACT_HELPER_PATH="/usr/bin:/bin:/usr/sbin:/sbin"
+export BSS_CONTRACT_HELPER_PATH
+resume_output="$(run_posix_helper "$resume_box" "$ROOT/linux/scripts/09-codex-resume.sh" --install)"
+unset BSS_CONTRACT_HELPER_PATH
+resume_code="$(exit_code_of "$resume_box")"
+resume_wrapper="$resume_box/helper/bin/bss-ai-helper"
+assert_contract "linux resume surface" "$([[ "$resume_code" == "0" ]]; echo $?)" "Linux resume step exits 0" "$resume_output"
+assert_contract "linux resume surface" "$([[ -f "$resume_wrapper" ]]; echo $?)" "helper bin wrapper is created" "$resume_output"
+assert_contains "linux resume surface" "$(cat "$resume_wrapper" 2>/dev/null || true)" "linux/install\\.sh" "Linux wrapper targets the Linux installer"
+assert_contract "linux skill-add fallback" "$([[ -f "$resume_box/helper/skill-install-fallback.md" ]]; echo $?)" "missing skill-add writes fallback instructions" "$resume_output"
+assert_contract "linux skill-add fallback" "$([[ ! -d "$resume_box/home/.codex/skills/bss-ai-helper" ]]; echo $?)" "fallback does not write directly to .codex skills" "$resume_output"
+assert_contract "linux skill-add fallback" "$([[ ! -d "$resume_box/home/.claude/skills/bss-ai-helper" ]]; echo $?)" "fallback does not write directly to .claude skills" "$resume_output"
+assert_contract "linux skill-add fallback" "$([[ ! -d "$resume_box/home/.agents/skills/bss-ai-helper" ]]; echo $?)" "fallback does not write directly to .agents skills" "$resume_output"
 
 pipe_box="$(new_sandbox)"
 pipe_output="$(run_installer "$pipe_box" "" --dry-run)"

@@ -121,6 +121,65 @@ function Invoke-Installer {
   }
 }
 
+function Invoke-GeneratedHelper {
+  param(
+    [string[]]$Arguments,
+    [hashtable]$Sandbox,
+    [int]$TimeoutSeconds = 20
+  )
+
+  $probe = Join-Path $Sandbox.Root 'invoke-generated-helper.ps1'
+  @'
+param([Parameter(ValueFromRemainingArguments=$true)][string[]]$RemainingArgs)
+& bss-ai-helper @RemainingArgs
+if ($LASTEXITCODE -is [int]) { exit $LASTEXITCODE }
+'@ | Set-Content -Encoding UTF8 $probe
+
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = Get-PowerShellExe
+  $argList = New-Object System.Collections.Generic.List[string]
+  $argList.Add('-NoProfile') | Out-Null
+  $argList.Add('-ExecutionPolicy') | Out-Null
+  $argList.Add('Bypass') | Out-Null
+  $argList.Add('-File') | Out-Null
+  $argList.Add($probe) | Out-Null
+  foreach ($arg in $Arguments) { $argList.Add($arg) | Out-Null }
+  $psi.Arguments = ($argList | ForEach-Object {
+      if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+    }) -join ' '
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+  $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
+  $psi.EnvironmentVariables['BSS_AI_HELPER_HOME'] = $Sandbox.Helper
+  $psi.EnvironmentVariables['USERPROFILE'] = $Sandbox.Home
+  $psi.EnvironmentVariables['HOME'] = $Sandbox.Home
+  $psi.EnvironmentVariables['LOCALAPPDATA'] = $Sandbox.LocalAppData
+  $psi.EnvironmentVariables['BSS_CONTRACT_COMMAND_LOG'] = $Sandbox.CommandLog
+  $psi.EnvironmentVariables['Path'] = (Join-Path $Sandbox.Helper 'bin') + ';' + $Sandbox.Bin
+
+  $process = New-Object System.Diagnostics.Process
+  $process.StartInfo = $psi
+  [void]$process.Start()
+  if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+    try { $process.Kill() } catch {}
+    return @{
+      ExitCode = 124
+      Output = "TIMEOUT after ${TimeoutSeconds}s"
+      TimedOut = $true
+    }
+  }
+
+  $stdout = $process.StandardOutput.ReadToEnd()
+  $stderr = $process.StandardError.ReadToEnd()
+  return @{
+    ExitCode = $process.ExitCode
+    Output = ($stdout + $stderr)
+    TimedOut = $false
+  }
+}
+
 function Assert-Contract {
   param([string]$Mode, [bool]$Condition, [string]$Expected, [string]$Output = '')
   if ($Condition) { return }
@@ -179,6 +238,11 @@ function Test-PowerShellParser {
 try {
   Test-PowerShellParser
 
+  $list = New-Sandbox
+  $listResult = Invoke-Installer -Arguments @('-List') -Sandbox $list
+  Assert-Contract 'step list' ($listResult.ExitCode -eq 0) 'exit 0 for -List' $listResult.Output
+  Assert-Contains 'step list' $listResult.Output '\bresume\b' 'Windows installer exposes the resume step'
+
   $status = New-Sandbox
   $statusResult = Invoke-Installer -Arguments @('-Status') -Sandbox $status
   Assert-Contract 'status-only' ($statusResult.ExitCode -eq 0) 'exit 0 for read-only status' $statusResult.Output
@@ -195,6 +259,23 @@ try {
   Assert-Contains 'explicit wizard' $wizardResult.Output '5\)' 'exit menu choice'
   Assert-NotContains 'explicit wizard' $wizardResult.Output 'bss-ai-boilerplate v' 'wizard should not enter classic installer for status choice'
   Assert-Contract 'explicit wizard' (Test-Path (Join-Path $wizard.Helper 'state.json')) 'isolated helper state is created only under the sandbox' $wizardResult.Output
+
+  $resume = New-Sandbox
+  $resumeResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'resume') -Sandbox $resume
+  $resumeWrapper = Join-Path $resume.Helper 'bin\bss-ai-helper.ps1'
+  $resumeFallback = Join-Path $resume.Helper 'skill-install-fallback.md'
+  $resumeWrapperText = if (Test-Path $resumeWrapper) { Get-Content $resumeWrapper -Raw } else { '' }
+  Assert-Contract 'resume surface' ($resumeResult.ExitCode -eq 0) 'resume step exits 0' $resumeResult.Output
+  Assert-Contract 'resume surface' (Test-Path $resumeWrapper) 'PowerShell helper wrapper is created' $resumeResult.Output
+  Assert-Contains 'resume surface' $resumeWrapperText 'windows\\install\.ps1' 'Windows wrapper targets the Windows installer'
+  $resumeStatusResult = Invoke-GeneratedHelper -Arguments @('--status') -Sandbox $resume
+  Assert-Contract 'resume status wrapper' ($resumeStatusResult.ExitCode -eq 0) 'bss-ai-helper --status exits 0' $resumeStatusResult.Output
+  Assert-Contract 'resume status wrapper' ($resumeStatusResult.Output.Trim().Length -gt 0) 'bss-ai-helper --status shows helper status'
+  Assert-NotContains 'resume status wrapper' $resumeStatusResult.Output 'unknown step id|bss-ai-boilerplate v' 'bss-ai-helper --status does not enter classic installer or reject GNU-style status'
+  Assert-Contract 'skill-add fallback' (Test-Path $resumeFallback) 'missing skill-add writes fallback instructions' $resumeResult.Output
+  Assert-Contract 'skill-add fallback' (-not (Test-Path (Join-Path $resume.Home '.codex\skills\bss-ai-helper'))) 'fallback does not write directly to .codex skills' $resumeResult.Output
+  Assert-Contract 'skill-add fallback' (-not (Test-Path (Join-Path $resume.Home '.claude\skills\bss-ai-helper'))) 'fallback does not write directly to .claude skills' $resumeResult.Output
+  Assert-Contract 'skill-add fallback' (-not (Test-Path (Join-Path $resume.Home '.agents\skills\bss-ai-helper'))) 'fallback does not write directly to .agents skills' $resumeResult.Output
 
   $wizardDryRun = New-Sandbox
   $wizardDryRunResult = Invoke-Installer -Arguments @('-Wizard', '-DryRun') -InputText "1`n" -Sandbox $wizardDryRun
@@ -222,7 +303,7 @@ try {
   $wizardInvalid = New-Sandbox
   $wizardInvalidResult = Invoke-Installer -Arguments @('-Wizard') -InputText "not-a-choice`n" -Sandbox $wizardInvalid
   Assert-Contract 'malformed wizard menu choice' ($wizardInvalidResult.ExitCode -eq 0) 'exit 0 and show status for an invalid wizard menu choice' $wizardInvalidResult.Output
-  Assert-Contains 'malformed wizard menu choice' $wizardInvalidResult.Output '0/5' 'status output after invalid wizard choice'
+  Assert-Contains 'malformed wizard menu choice' $wizardInvalidResult.Output '0/[0-9]+' 'status output after invalid wizard choice'
   Assert-NotContains 'malformed wizard menu choice' $wizardInvalidResult.Output 'bss-ai-boilerplate v' 'invalid wizard choice should not enter classic installer'
 
   $addonLongWork = New-Sandbox
