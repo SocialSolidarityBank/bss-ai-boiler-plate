@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # 05-docker.sh — Docker Engine (native) + compose/buildx plugins
 
+docker_opted_in() {
+  case "${BSS_INSTALL_DOCKER:-${BSS_AI_HELPER_INSTALL_DOCKER:-0}}" in
+    1|true|TRUE|yes|YES|y|Y) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 step_docker() {
   step "Containers: Docker Engine + compose/buildx"
 
@@ -9,6 +16,17 @@ step_docker() {
     docker compose version  >/dev/null 2>&1 && ok "docker compose plugin present"
     docker buildx version   >/dev/null 2>&1 && ok "docker buildx plugin present"
     _docker_group_hint
+    return 0
+  fi
+
+  if [[ "$ASSUME_YES" == "1" ]] && ! docker_opted_in; then
+    info "Docker is explicit opt-in; skipping under --yes. Re-run with --with-docker or BSS_INSTALL_DOCKER=1 to install it."
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" != "1" ]] && ! can_sudo; then
+    warn "not root and cannot escalate with sudo — skipping Docker Engine install."
+    warn "Install Docker manually later, or re-run from a root/sudo-capable terminal with --with-docker."
     return 0
   fi
 

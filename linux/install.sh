@@ -10,14 +10,15 @@
 #
 # Options:
 #   --dry-run        Show what would happen, change nothing.
-#   --yes, -y        Non-interactive: accept defaults, never prompt.
+#   --yes, -y        Non-interactive: accept safe defaults, never prompt.
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
 #   --status         Show saved BSS AI Helper progress and exit.
 #   --reset-state    Ask before deleting saved resume state.
-#   --classic        Run the classic step installer.
-#   --wizard         Reserved for the question wizard lanes.
+#   --classic        Run the documented non-interactive/classic step installer.
+#   --wizard         Run the question wizard; with piped stdin, read /dev/tty if available.
+#   --with-docker    Explicitly allow Docker install under --yes/non-interactive mode.
 #   --list           List step ids and exit.
 #   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
@@ -102,6 +103,7 @@ usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$ROOT/inst
 # Arg parsing
 # ---------------------------------------------------------------------------
 ONLY=""; SKIP=""; STATUS=0; RESET_STATE=0; WIZARD=0; CLASSIC=0; DIRECT_MODE=0
+: "${BSS_INSTALL_DOCKER:=0}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)   export DRY_RUN=1 ;;
@@ -110,6 +112,7 @@ while [[ $# -gt 0 ]]; do
     --reset-state) RESET_STATE=1 ;;
     --classic)   CLASSIC=1; DIRECT_MODE=1 ;;
     --wizard)    WIZARD=1 ;;
+    --with-docker) export BSS_INSTALL_DOCKER=1; DIRECT_MODE=1 ;;
     --only)      ONLY="${2:-}"; shift; DIRECT_MODE=1 ;;
     --only=*)    ONLY="${1#*=}"; DIRECT_MODE=1 ;;
     --skip)      SKIP="${2:-}"; shift; DIRECT_MODE=1 ;;
@@ -148,13 +151,36 @@ if [[ "$RESET_STATE" == "1" ]]; then
   bss_reset_state
   exit 0
 fi
+run_linux_wizard() {
+  local tty_path="${BSS_AI_HELPER_TTY:-/dev/tty}"
+  if [[ ! -t 0 ]]; then
+    if [[ -n "$tty_path" && -e "$tty_path" ]] && exec 9<> "$tty_path" 2>/dev/null; then
+      info "stdin is redirected; reading wizard answers from tty: $tty_path"
+      local wizard_status=0
+      if run_wizard linux <&9; then
+        wizard_status=0
+      else
+        wizard_status=$?
+      fi
+      exec 9<&-
+      exec 9>&-
+      return "$wizard_status"
+    fi
+    warn "--wizard requested, but no interactive terminal is available. Falling back to the classic installer; use --classic for automation."
+    return 2
+  fi
+  run_wizard linux
+}
 if [[ "$WIZARD" == "1" || ( "$CLASSIC" != "1" && "$DIRECT_MODE" != "1" && -t 0 ) ]]; then
-  if run_wizard linux; then
+  if run_linux_wizard; then
     exit 0
   else
     wizard_code=$?
     [[ "$wizard_code" == 2 ]] || exit "$wizard_code"
   fi
+fi
+if [[ "$WIZARD" != "1" && "$CLASSIC" != "1" && "$DIRECT_MODE" != "1" && ! -t 0 ]]; then
+  info "No interactive terminal detected; running the documented non-interactive classic installer. Use --wizard from a terminal for questions, or --classic/--dry-run/--status for automation."
 fi
 
 # Build the active step list honouring --only / --skip
