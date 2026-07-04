@@ -10,28 +10,29 @@
 #
 # Options:
 #   --dry-run        Show what would happen, change nothing.
-#   --yes, -y        Non-interactive: accept defaults, never prompt.
+#   --yes, -y        Non-interactive: accept safe defaults, never prompt.
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
 #   --status         Show saved BSS AI Helper progress and exit.
 #   --reset-state    Ask before deleting saved resume state.
-#   --classic        Run the classic step installer.
-#   --wizard         Reserved for the question wizard lanes.
+#   --classic        Run the documented non-interactive/classic step installer.
+#   --wizard         Run the question wizard; with piped stdin, read /dev/tty if available.
+#   --with-docker    Explicitly allow Docker install under --yes/non-interactive mode.
 #   --list           List step ids and exit.
 #   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
 #
-# Steps (in order): prereqs packages runtimes shell docker git agents
+# Steps (in order): prereqs packages runtimes shell docker git agents resume report
 #
 # Supported package managers: apt · dnf/yum · pacman · zypper (glibc distros).
 # Alpine/musl (apk) is not supported (upstream node/ast-grep/bun lack musl builds).
 #
 set -euo pipefail
 
-REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-helper.git}}"
+REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git}}"
 REPO_BRANCH="${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}"
-CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-helper}}"
+CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-boiler-plate}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the linux/ dir), or bootstrap by cloning (curl | bash).
@@ -78,7 +79,7 @@ KIT_VERSION="$(cat "$ROOT/../VERSION" 2>/dev/null || echo dev)"
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
-STEP_IDS=(prereqs packages runtimes shell docker git agents)
+STEP_IDS=(prereqs packages runtimes shell docker git agents resume report)
 
 # step_file <id> -> the scripts/NN-*.sh filename for that step
 step_file() {
@@ -90,6 +91,8 @@ step_file() {
     docker)   echo 05-docker.sh ;;
     git)      echo 06-git.sh ;;
     agents)   echo 07-agents.sh ;;
+    resume)   echo 09-codex-resume.sh ;;
+    report)   echo ../../scripts/10-report.sh ;;
     *) return 1 ;;
   esac
 }
@@ -110,6 +113,7 @@ while [[ $# -gt 0 ]]; do
     --reset-state) RESET_STATE=1 ;;
     --classic)   CLASSIC=1; DIRECT_MODE=1 ;;
     --wizard)    WIZARD=1 ;;
+    --with-docker) export BSS_INSTALL_DOCKER=1; DIRECT_MODE=1 ;;
     --only)      ONLY="${2:-}"; shift; DIRECT_MODE=1 ;;
     --only=*)    ONLY="${1#*=}"; DIRECT_MODE=1 ;;
     --skip)      SKIP="${2:-}"; shift; DIRECT_MODE=1 ;;
@@ -148,13 +152,36 @@ if [[ "$RESET_STATE" == "1" ]]; then
   bss_reset_state
   exit 0
 fi
+run_linux_wizard() {
+  local tty_path="${BSS_AI_HELPER_TTY:-/dev/tty}"
+  if [[ ! -t 0 ]]; then
+    if [[ -n "$tty_path" && -e "$tty_path" ]] && exec 9<> "$tty_path" 2>/dev/null; then
+      info "stdin is redirected; reading wizard answers from tty: $tty_path"
+      local wizard_status=0
+      if run_wizard linux <&9; then
+        wizard_status=0
+      else
+        wizard_status=$?
+      fi
+      exec 9<&-
+      exec 9>&-
+      return "$wizard_status"
+    fi
+    warn "--wizard requested, but no interactive terminal is available. Falling back to the classic installer; use --classic for automation."
+    return 2
+  fi
+  run_wizard linux
+}
 if [[ "$WIZARD" == "1" || ( "$CLASSIC" != "1" && "$DIRECT_MODE" != "1" && -t 0 ) ]]; then
-  if run_wizard linux; then
+  if run_linux_wizard; then
     exit 0
   else
     wizard_code=$?
     [[ "$wizard_code" == 2 ]] || exit "$wizard_code"
   fi
+fi
+if [[ "$WIZARD" != "1" && "$CLASSIC" != "1" && "$DIRECT_MODE" != "1" && ! -t 0 ]]; then
+  info "No interactive terminal detected; running the documented non-interactive classic installer. Use --wizard from a terminal for questions, or --classic/--dry-run/--status for automation."
 fi
 
 # Build the active step list honouring --only / --skip

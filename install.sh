@@ -22,13 +22,13 @@
 #   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
 #
-# Steps (in order): prereqs brew runtimes shell docker git agents
+# Steps (in order): prereqs brew runtimes shell docker git agents resume report
 #
 set -euo pipefail
 
-REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-helper.git}}"
+REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git}}"
 REPO_BRANCH="${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}"
-CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-helper}}"
+CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-boiler-plate}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root, or bootstrap by cloning (supports curl | bash).
@@ -78,7 +78,7 @@ KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
 # Step registry
 # ---------------------------------------------------------------------------
 # Note: kept bash-3.2 compatible (macOS ships bash 3.2) — no associative arrays.
-STEP_IDS=(prereqs brew runtimes shell docker git agents)
+STEP_IDS=(prereqs brew runtimes shell docker git agents resume report)
 
 # step_file <id> -> the scripts/NN-*.sh filename for that step
 step_file() {
@@ -90,6 +90,8 @@ step_file() {
     docker)   echo 05-docker.sh ;;
     git)      echo 06-git.sh ;;
     agents)   echo 07-agents.sh ;;
+    resume)   echo 09-codex-resume.sh ;;
+    report)   echo 10-report.sh ;;
     *) return 1 ;;
   esac
 }

@@ -7,7 +7,7 @@
   From a fresh machine -> winget packages, runtimes, PowerShell profile, Docker,
   and AI coding agents (gajae-code + codex + lazycodex).
 
-  Steps (in order): prereqs packages runtimes shell docker git agents
+  Steps (in order): prereqs packages runtimes shell docker git agents resume report
 
 .PARAMETER DryRun
   Show what would happen, change nothing.
@@ -56,9 +56,31 @@ $ErrorActionPreference = 'Stop'
 $script:RunFromFile = [bool]$PSCommandPath
 
 $HomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
-$RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/bss-ai-helper.git' }
+$RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git' }
 $RepoBranch = if ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
-$CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-helper' }
+$CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-boiler-plate' }
+
+function Add-BootstrapPathEntry {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) { return }
+  $normalized = $Path.TrimEnd('\').ToLowerInvariant()
+  foreach ($entry in ($env:Path -split ';')) {
+    if ($entry.TrimEnd('\').ToLowerInvariant() -eq $normalized) { return }
+  }
+  $env:Path = if ($env:Path) { $env:Path + ';' + $Path } else { $Path }
+}
+
+function Update-BootstrapSessionPath {
+  if ($env:BSS_AI_HELPER_DISABLE_PATH_REFRESH -eq '1') { return }
+  foreach ($scope in @('Machine', 'User')) {
+    $scopePath = [Environment]::GetEnvironmentVariable('Path', $scope)
+    if ($scopePath) {
+      foreach ($entry in ($scopePath -split ';')) { Add-BootstrapPathEntry $entry }
+    }
+  }
+  if ($env:LOCALAPPDATA) { Add-BootstrapPathEntry (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps') }
+  Add-BootstrapPathEntry 'C:\Program Files\Git\cmd'
+}
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the windows\ dir), or bootstrap by cloning.
@@ -69,14 +91,18 @@ function Resolve-Root {
   if ($dir -and (Test-Path (Join-Path $dir 'scripts\lib.ps1'))) { return $dir }
 
   Write-Host "==> Bootstrapping bss-ai-boilerplate into $CloneDir" -ForegroundColor Blue
+  Update-BootstrapSessionPath
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    # A piped one-liner (irm | iex) needs git to clone the kit. On a fresh
-    # machine, install it via winget, then refresh PATH for this session.
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-      Write-Host "==> git not found - installing via winget..." -ForegroundColor Blue
-      winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements --silent --disable-interactivity
-      $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
-                  [Environment]::GetEnvironmentVariable('Path','User') + ';C:\Program Files\Git\cmd'
+    $wingetCommand = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wingetCommand) {
+      Write-Host "==> git not found. Install Git first, then re-run this command:" -ForegroundColor Red
+      Write-Host "    winget install --id Git.Git -e" -ForegroundColor Red
+    } else {
+      Write-Host "==> winget not found. Install or repair App Installer, and make sure WindowsApps is on PATH:" -ForegroundColor Red
+      Write-Host "    ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1" -ForegroundColor Red
+      if ($env:LOCALAPPDATA) {
+        Write-Host "    $((Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'))" -ForegroundColor Red
+      }
     }
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
       Write-Host "==> git still not found. Either:" -ForegroundColor Red
@@ -123,7 +149,7 @@ $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
-$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents')
+$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume', 'report')
 $StepFile = @{
   prereqs  = '01-prereqs.ps1'
   packages = '02-packages.ps1'
@@ -132,6 +158,8 @@ $StepFile = @{
   docker   = '05-docker.ps1'
   git      = '06-git.ps1'
   agents   = '07-agents.ps1'
+  resume   = '09-codex-resume.ps1'
+  report   = 'report.ps1'
 }
 $StepFunc = @{
   prereqs  = 'Step-Prereqs'
@@ -141,6 +169,8 @@ $StepFunc = @{
   docker   = 'Step-Docker'
   git      = 'Step-Git'
   agents   = 'Step-Agents'
+  resume   = 'Step-Resume'
+  report   = 'Step-Report'
 }
 
 if ($Help)    { Get-Help $target -Detailed;                    if ($script:RunFromFile) { exit 0 } else { return } }
@@ -160,12 +190,19 @@ if ($ResetState) {
   if ($script:RunFromFile) { exit 0 } else { return }
 }
 $directMode = [bool]($Classic -or $Yes -or $Only.Count -gt 0 -or $Skip.Count -gt 0 -or $NoAgents)
-if (($Wizard -or ((-not $directMode) -and (-not [Console]::IsInputRedirected))) -and -not $Classic)  {
+$inputRedirected = [Console]::IsInputRedirected
+if ($inputRedirected -and -not $Wizard -and -not $Classic) {
+  Write-Warn "Input is redirected, so the question wizard is not started automatically. Running the classic installer; use -Wizard from an interactive console or -Status for a read-only check."
+}
+if (($Wizard -or ((-not $directMode) -and (-not $inputRedirected))) -and -not $Classic)  {
   if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
   . (Join-Path $Root 'scripts\recommendations.ps1')
   . (Join-Path $Root 'scripts\wizard.ps1')
+  $script:WizardRequestedClassic = $false
   Start-Wizard -Platform 'Windows' -Root $Root
-  if ($script:RunFromFile) { exit 0 } else { return }
+  if (-not $script:WizardRequestedClassic) {
+    if ($script:RunFromFile) { exit 0 } else { return }
+  }
 }
 
 if ($NoAgents) { $Skip = @($Skip) + 'agents' }

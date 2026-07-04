@@ -41,6 +41,24 @@ can_sudo() {
   is_tty                                      # otherwise we need a tty to prompt
 }
 
+_PM_PRIVILEGE_WARNED=0
+can_install_system_packages() {
+  [[ "$DRY_RUN" == "1" ]] && return 0
+  can_sudo
+}
+
+skip_system_packages_no_privilege() {
+  local what="${1:-system packages}"
+  if [[ "$_PM_PRIVILEGE_WARNED" == "0" ]]; then
+    warn "not root and cannot escalate with sudo - skipping system packages: $what"
+    warn "Install those packages manually later, or re-run from a root/sudo-capable terminal."
+    _PM_PRIVILEGE_WARNED=1
+  else
+    warn "skipping system packages: $what"
+  fi
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Distro / package-manager detection
 # ---------------------------------------------------------------------------
@@ -68,6 +86,10 @@ _PM_REFRESHED=0
 pm_refresh() {
   [[ "$_PM_REFRESHED" == "1" ]] && return 0
   _PM_REFRESHED=1
+  if ! can_install_system_packages; then
+    skip_system_packages_no_privilege "package index refresh"
+    return 0
+  fi
   case "$PM" in
     apt)    run $SUDO apt-get update -y || true ;;
     dnf)    run $SUDO dnf -y makecache || true ;;
@@ -94,6 +116,10 @@ pm_refresh() {
 # pm_install PKG...  — install one or more system packages (non-interactive)
 pm_install() {
   [[ $# -gt 0 ]] || return 0
+  if ! can_install_system_packages; then
+    skip_system_packages_no_privilege "$*"
+    return 0
+  fi
   pm_refresh   # refresh the package index once (no-op after the first call)
   case "$PM" in
     apt)    run $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@" ;;

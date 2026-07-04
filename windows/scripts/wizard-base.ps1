@@ -1,4 +1,4 @@
-function Invoke-InstallerStep {
+﻿function Invoke-InstallerStep {
   param([Parameter(Mandatory)][string]$Id, [Parameter(Mandatory)][string]$Root)
   $files = @{
     prereqs = '01-prereqs.ps1'

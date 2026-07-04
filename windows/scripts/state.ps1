@@ -1,4 +1,4 @@
-function Get-HelperHome {
+﻿function Get-HelperHome {
   if ($env:BSS_AI_HELPER_HOME) { return $env:BSS_AI_HELPER_HOME }
   return (Join-Path $HOME '.bss-ai-helper')
 }
@@ -12,20 +12,43 @@ function New-HelperState {
   return @{ version = 1; steps = @{}; ai_services = @(); aiServices = @(); addons = @{}; tools = @() }
 }
 
+function ConvertTo-StatusSafeText {
+  param($Value)
+  $text = if ($null -eq $Value) { '' } else { [string]$Value }
+  $patterns = @(
+    '(?i)\bAuthorization\s*:\s*Bearer\s+["'']?[A-Za-z0-9._~+/\-=]+["'']?',
+    '(?i)\bBearer\s+["'']?[A-Za-z0-9._~+/\-=]{4,}["'']?',
+    '(?i)\b(password|passcode|secret|credential|api[_-]?key|access[_-]?key|auth[_-]?code|oauth[_-]?code|token)\s*[:=]\s*\S+',
+    '\bsk-[A-Za-z0-9_-]{8,}',
+    '\bgh[pousr]_[A-Za-z0-9_]{8,}'
+  )
+  foreach ($pattern in $patterns) {
+    $text = [regex]::Replace($text, $pattern, '[redacted]')
+  }
+  return $text
+}
+
 function ConvertTo-PlainObject {
   param($Value)
   if ($null -eq $Value) { return $null }
+  if ($Value -is [string]) { return $Value }
   if ($Value -is [System.Collections.IDictionary]) {
     $hash = @{}
     foreach ($key in $Value.Keys) { $hash[$key] = ConvertTo-PlainObject -Value $Value[$key] }
     return $hash
   }
-  if ($Value -is [System.Array]) {
+  if ($Value -is [System.Collections.IEnumerable]) {
     return @($Value | ForEach-Object { ConvertTo-PlainObject -Value $_ })
   }
-  if ($Value.PSObject -and $Value.PSObject.Properties.Count -gt 0 -and -not ($Value -is [string])) {
+  $properties = @($Value.PSObject.Properties | ForEach-Object { $_ })
+  if ($Value -is [pscustomobject]) {
     $hash = @{}
-    foreach ($prop in $Value.PSObject.Properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
+    foreach ($prop in $properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
+    return $hash
+  }
+  if ($properties.Count -gt 0) {
+    $hash = @{}
+    foreach ($prop in $properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
     return $hash
   }
   return $Value
@@ -40,11 +63,11 @@ function Read-HelperState {
     $parsed = Get-Content $path -Raw | ConvertFrom-Json
     $state = ConvertTo-PlainObject -Value $parsed
     if (-not $state.ContainsKey('version')) { $state['version'] = 1 }
-    if (-not $state.ContainsKey('steps')) { $state['steps'] = @{} }
-    if (-not $state.ContainsKey('ai_services')) { $state['ai_services'] = @() }
-    if (-not $state.ContainsKey('aiServices')) { $state['aiServices'] = @($state['ai_services']) }
-    if (-not $state.ContainsKey('addons')) { $state['addons'] = @{} }
-    if (-not $state.ContainsKey('tools')) { $state['tools'] = @() }
+    if (-not $state.ContainsKey('steps') -or $null -eq $state['steps']) { $state['steps'] = @{} }
+    if (-not $state.ContainsKey('ai_services') -or $null -eq $state['ai_services']) { $state['ai_services'] = @() }
+    if (-not $state.ContainsKey('aiServices') -or $null -eq $state['aiServices']) { $state['aiServices'] = @($state['ai_services']) }
+    if (-not $state.ContainsKey('addons') -or $null -eq $state['addons']) { $state['addons'] = @{} }
+    if (-not $state.ContainsKey('tools') -or $null -eq $state['tools']) { $state['tools'] = @() }
     return $state
   } catch {
     Write-Warn "진행 상태 파일을 읽을 수 없습니다. 파일은 지우지 않았습니다."
@@ -159,7 +182,9 @@ function Show-Status {
     @{ key = 'shell'; label = '터미널 편의 설정' },
     @{ key = 'github'; label = 'GitHub 연결' },
     @{ key = 'ai-tools'; label = 'AI 도구 선택' },
-    @{ key = 'addons'; label = '추가 도구 추천' }
+    @{ key = 'addons'; label = '추가 도구 추천' },
+    @{ key = 'resume'; label = '다시 시작 표면' },
+    @{ key = 'report'; label = '마무리 리포트' }
   )
   $icons = @{
     complete = '● 완료'
@@ -179,8 +204,8 @@ function Show-Status {
     $key = $item.key
     $row = $null
     if ($state['steps']) { $row = $state['steps'][$key] }
-    $status = if ($row) { $row['status'] } else { 'pending' }
-    $note = if ($row) { $row['note'] } else { '' }
+    $status = if ($row) { ConvertTo-StatusSafeText $row['status'] } else { 'pending' }
+    $note = if ($row) { ConvertTo-StatusSafeText $row['note'] } else { '' }
     $suffix = if ($note) { " - $note" } else { '' }
     $icon = if ($icons.ContainsKey($status)) { $icons[$status] } else { $status }
     Write-Output "$icon $($item.label)$suffix"

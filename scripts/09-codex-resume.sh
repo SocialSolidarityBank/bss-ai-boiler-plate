@@ -16,26 +16,29 @@ USAGE
 }
 
 write_codex_restart_surface() {
-  local helper_home bin wrapper codex_md repo_root
+  local helper_home bin wrapper codex_md repo_root installer_rel
   helper_home="$(bss_helper_home)"
   bin="$helper_home/bin"
   wrapper="$bin/bss-ai-helper"
   codex_md="$helper_home/CODEX.md"
   repo_root="$ROOT"
+  installer_rel="${BSS_AI_HELPER_INSTALLER_RELATIVE:-install.sh}"
   mkdir -p "$bin"
 
   cat > "$wrapper" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 repo="\${BSS_AI_HELPER_REPO:-$repo_root}"
-if [[ ! -x "\$repo/install.sh" ]]; then
-  echo "BSS AI Helper repo not found: \$repo" >&2
+installer_rel="\${BSS_AI_HELPER_INSTALLER_RELATIVE:-$installer_rel}"
+installer="\$repo/\$installer_rel"
+if [[ ! -f "\$installer" ]]; then
+  echo "BSS AI Helper installer not found: \$installer" >&2
   exit 1
 fi
 if [[ "\$#" -eq 0 ]]; then
   set -- --status
 fi
-exec "\$repo/install.sh" "\$@"
+exec bash "\$installer" "\$@"
 EOF
   chmod +x "$wrapper"
 
@@ -87,13 +90,24 @@ EOF
   printf 'codex-skill=skipped\n' > "$(bss_helper_home)/codex-skill.status"
 }
 
+step_resume() {
+  step "BSS AI Helper restart surface"
+  bss_ensure_home
+  state_init
+  write_codex_restart_surface
+  install_codex_skill
+  if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+    state_set_step_status resume complete "restart surface ready"
+  else
+    warn "python not found; restart surface was created but resume state was not updated."
+  fi
+  ok "BSS AI Helper Codex restart surface ready: $(bss_helper_home)"
+}
+
 main() {
   case "${1:-}" in
     --install)
-      bss_ensure_home
-      write_codex_restart_surface
-      install_codex_skill
-      ok "BSS AI Helper Codex restart surface ready: $(bss_helper_home)"
+      step_resume
       ;;
     -h|--help)
       usage
@@ -105,4 +119,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

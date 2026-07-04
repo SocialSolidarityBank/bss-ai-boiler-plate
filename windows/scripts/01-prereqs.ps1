@@ -13,17 +13,11 @@ function Step-Prereqs {
   try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
   # --- winget (Windows Package Manager, ships in App Installer) -----------
-  if (Test-HasCommand winget) {
-    $ver = (Invoke-NativeSilently 'winget' @('--version'))
-    Write-Ok "winget present ($ver)"
+  $wingetStatus = Assert-WingetReady -Context 'the Windows installer'
+  if ($wingetStatus.Ready) {
+    Write-Ok "winget present ($($wingetStatus.Version))"
   } else {
-    Write-Warn "winget not found."
-    Write-Info "winget ships with 'App Installer'. Install it from the Microsoft Store:"
-    Write-Info "  https://apps.microsoft.com/detail/9nblggh4nns1"
-    Write-Info "or via: Add-AppxPackage from https://github.com/microsoft/winget-cli/releases"
-    if (-not $script:DryRun) {
-      Stop-Kit "winget is required -- install App Installer, then re-run this script."
-    }
+    Write-Warn "dry-run continuing after winget diagnostics; install or repair App Installer before a real run."
   }
 
   # --- execution policy so the PowerShell profile can load ---------------

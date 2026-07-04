@@ -1,4 +1,4 @@
-function Convert-SafeAiServiceNames {
+﻿function Convert-SafeAiServiceNames {
   param([string]$Raw)
   $safe = @()
   foreach ($item in ($Raw -split ',')) {
@@ -16,6 +16,7 @@ function Convert-SafeAiServiceNames {
 
 function Invoke-AiToolsStep {
   param([string]$Root)
+  $script:WizardAiServices = @()
   Write-Step '3단계 AI 도구 선택'
   Write-Output '1) Codex'
   Write-Output '2) Claude'
@@ -39,11 +40,13 @@ function Invoke-AiToolsStep {
       Write-Info "지원하지 않는 서비스는 기록만 하고 자동 설치하지 않습니다: $($services -join ', ')"
     }
     default {
+      $script:WizardAiServices = @()
       Add-AiService -Services @()
       Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note '아직 정하지 않음'
       return
     }
   }
+  $script:WizardAiServices = @($services)
   Add-AiService -Services $services
   if ($env:BSS_AI_INSTALL_CODEX -ne '1' -and $env:BSS_AI_INSTALL_CLAUDE -ne '1') {
     Set-StepStatus -Step 'ai-tools' -Status 'complete' -Note ($services -join ',')
@@ -70,11 +73,16 @@ function Invoke-AddonsStep {
   Write-Step '4단계 추가 도구 추천'
   $state = Read-HelperState
   $services = @($state['ai_services'])
+  if ($script:WizardAiServices -and $script:WizardAiServices.Count -gt 0) {
+    $services = @($script:WizardAiServices)
+  }
   Write-Output '1) 강한 오케스트레이션, 멀티 서브 에이전트'
   Write-Output '2) 질문 항목을 하나씩 설계해주는 선생님'
+  Write-Output '3) Codex로 긴 자동 설치/수정 작업'
+  Write-Output '4) 고급 에이전트 도구'
   Write-Output '5) 추천 없이 마치기'
   $choice = Read-WizardChoice -Prompt '선택:' -Default '5'
-  $preference = if ($choice -eq '1') { 'orchestration' } elseif ($choice -eq '2') { 'teacher' } else { 'none' }
+  $preference = if ($choice -eq '1') { 'orchestration' } elseif ($choice -eq '2') { 'teacher' } elseif ($choice -eq '3') { 'long-work' } elseif ($choice -eq '4') { 'advanced' } else { 'none' }
   $candidates = @(Get-RecommendationCandidates -Services $services -Preference $preference)
   $id = Get-RecommendationPick -Services $services -Preference $preference
   if (-not $id -and $candidates.Count -gt 0) { $id = $candidates[0] }

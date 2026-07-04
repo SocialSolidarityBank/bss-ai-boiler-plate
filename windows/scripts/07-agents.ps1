@@ -20,7 +20,11 @@ function Step-Agents {
   if (-not $installExtras) {
   } elseif (Test-HasCommand bun) {
     if (Test-HasCommand gjc) {
-      Write-Ok "gajae-code present (gjc $(Invoke-NativeSilently 'gjc' @('--version') | Select-Object -First 1))"
+      if ($script:DryRun) {
+        Write-Info "[dry-run] gajae-code already present; would leave it unchanged"
+      } else {
+        Write-Ok "gajae-code present (gjc $(Invoke-NativeSilently 'gjc' @('--version') | Select-Object -First 1))"
+      }
     } else {
       Write-Info "Installing gajae-code (bun add -g gajae-code)..."
       Invoke-Run -Exe 'bun' -Arguments @('add', '-g', 'gajae-code') | Out-Null
@@ -48,7 +52,11 @@ function Step-Agents {
       if ($script:DryRun -and $forcePreview) {
         Write-Info "[dry-run] mise exec -- npm install -g @openai/codex; mise reshim"
       } elseif (Test-HasCommand codex) {
-        Write-Ok "codex present ($(Invoke-NativeSilently 'codex' @('--version') | Select-Object -First 1))"
+        if ($script:DryRun) {
+          Write-Info "[dry-run] codex already present; would leave it unchanged"
+        } else {
+          Write-Ok "codex present ($(Invoke-NativeSilently 'codex' @('--version') | Select-Object -First 1))"
+        }
       } else {
         Write-Info "Installing @openai/codex (npm -g)..."
         if ($script:DryRun) {
@@ -95,7 +103,11 @@ function Step-Agents {
   } elseif ($script:DryRun -and $forcePreview) {
     Write-Info "[dry-run] irm https://claude.ai/install.ps1 | iex"
   } elseif (Test-HasCommand claude) {
-    Write-Ok "Claude Code present ($(Invoke-NativeSilently 'claude' @('--version') | Select-Object -First 1))"
+    if ($script:DryRun) {
+      Write-Info "[dry-run] Claude Code already present; would leave it unchanged"
+    } else {
+      Write-Ok "Claude Code present ($(Invoke-NativeSilently 'claude' @('--version') | Select-Object -First 1))"
+    }
   } elseif ($script:DryRun) {
     Write-Info "[dry-run] irm https://claude.ai/install.ps1 | iex"
   } else {
