@@ -3,8 +3,9 @@
 function Step-Packages {
   Write-Step "CLI tools + developer toolchain (winget)"
 
-  if (-not (Test-HasCommand winget) -and -not $script:DryRun) {
-    Stop-Kit "winget not available -- run the 'prereqs' step first."
+  $wingetStatus = Assert-WingetReady -Context 'the packages step'
+  if (-not $wingetStatus.Ready) {
+    Write-Warn "dry-run continuing after winget diagnostics; package installs need App Installer repaired first."
   }
 
   # id -> friendly name. Ordering: core CLI, then the dev toolchain.

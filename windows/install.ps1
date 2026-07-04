@@ -60,6 +60,27 @@ $RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   e
 $RepoBranch = if ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
 $CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-helper' }
 
+function Add-BootstrapPathEntry {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) { return }
+  $normalized = $Path.TrimEnd('\').ToLowerInvariant()
+  foreach ($entry in ($env:Path -split ';')) {
+    if ($entry.TrimEnd('\').ToLowerInvariant() -eq $normalized) { return }
+  }
+  $env:Path = if ($env:Path) { $env:Path + ';' + $Path } else { $Path }
+}
+
+function Update-BootstrapSessionPath {
+  foreach ($scope in @('Machine', 'User')) {
+    $scopePath = [Environment]::GetEnvironmentVariable('Path', $scope)
+    if ($scopePath) {
+      foreach ($entry in ($scopePath -split ';')) { Add-BootstrapPathEntry $entry }
+    }
+  }
+  if ($env:LOCALAPPDATA) { Add-BootstrapPathEntry (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps') }
+  Add-BootstrapPathEntry 'C:\Program Files\Git\cmd'
+}
+
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the windows\ dir), or bootstrap by cloning.
 # ---------------------------------------------------------------------------
@@ -69,14 +90,21 @@ function Resolve-Root {
   if ($dir -and (Test-Path (Join-Path $dir 'scripts\lib.ps1'))) { return $dir }
 
   Write-Host "==> Bootstrapping bss-ai-boilerplate into $CloneDir" -ForegroundColor Blue
+  Update-BootstrapSessionPath
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     # A piped one-liner (irm | iex) needs git to clone the kit. On a fresh
     # machine, install it via winget, then refresh PATH for this session.
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
+    $wingetCommand = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wingetCommand) {
       Write-Host "==> git not found - installing via winget..." -ForegroundColor Blue
-      winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements --silent --disable-interactivity
-      $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
-                  [Environment]::GetEnvironmentVariable('Path','User') + ';C:\Program Files\Git\cmd'
+      & $wingetCommand.Source install --id Git.Git -e --accept-package-agreements --accept-source-agreements --silent --disable-interactivity
+      Update-BootstrapSessionPath
+    } else {
+      Write-Host "==> winget not found. Install or repair App Installer, and make sure WindowsApps is on PATH:" -ForegroundColor Red
+      Write-Host "    ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1" -ForegroundColor Red
+      if ($env:LOCALAPPDATA) {
+        Write-Host "    $((Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'))" -ForegroundColor Red
+      }
     }
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
       Write-Host "==> git still not found. Either:" -ForegroundColor Red
