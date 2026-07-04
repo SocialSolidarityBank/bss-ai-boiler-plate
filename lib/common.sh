@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# common.sh — OS-agnostic shared helpers for lazy-starter-kit.
+# common.sh — OS-agnostic shared helpers for bss-ai-boilerplate.
 #
 # Sourced by scripts/lib.sh (macOS) and linux/scripts/lib.sh, each of which adds
 # its own OS-specific bits. Kept in ONE place so a fix can't accidentally land in
@@ -91,7 +91,7 @@ inject_block() {
     grep -qxF "$begin" "$file" && has_begin=1
     grep -qxF "$end"   "$file" && has_end=1
     if [[ "$has_begin" != "$has_end" ]]; then
-      warn "${file/#$HOME/~} has an unmatched lazy-starter-kit '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
+      warn "${file/#$HOME/~} has an unmatched managed '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
       return 0
     fi
   fi
@@ -109,7 +109,7 @@ inject_block() {
   [[ -f "$file" ]] || : > "$file"
 
   # one-time safety backup before the first rewrite of a non-empty user file
-  local bak="$file.lazy-starter-kit.bak"
+  local bak="$file.bss-ai-boilerplate.bak"
   if [[ -s "$file" && ! -e "$bak" ]]; then
     cp "$file" "$bak"
     info "backed up ${file/#$HOME/~} -> ${bak/#$HOME/~} (first change)"
@@ -143,7 +143,7 @@ remove_block() {
   grep -qxF "$begin" "$file" && has_begin=1
   grep -qxF "$end"   "$file" && has_end=1
   if [[ "$has_begin" != "$has_end" ]]; then
-    warn "${file/#$HOME/~} has an unmatched lazy-starter-kit '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
+    warn "${file/#$HOME/~} has an unmatched managed '$tag' marker; refusing to modify it. Fix or delete the stray marker line by hand."
     return 0
   fi
   [[ "$has_begin" == 1 ]] || { info "no '$tag' block in ${file/#$HOME/~}"; return 0; }
@@ -154,7 +154,7 @@ remove_block() {
   fi
 
   # one-time safety backup before the first rewrite of a non-empty user file
-  local bak="$file.lazy-starter-kit.bak"
+  local bak="$file.bss-ai-boilerplate.bak"
   if [[ -s "$file" && ! -e "$bak" ]]; then
     cp "$file" "$bak"
     info "backed up ${file/#$HOME/~} -> ${bak/#$HOME/~} (first change)"

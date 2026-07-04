@@ -1,7 +1,7 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  lazy-starter-kit -- uninstaller. Reverses install.ps1 in reverse order.
+  bss-ai-boilerplate -- uninstaller. Reverses install.ps1 in reverse order.
 
 .DESCRIPTION
   Destructive groups are confirm-gated. Never auto-removes your git identity.
@@ -157,6 +157,7 @@ function Undo-Shell {
   # Strip the block from BOTH host profiles (5.1 WindowsPowerShell\ and 7
   # PowerShell\); the installer writes both.
   foreach ($profilePath in (Get-AllHostsProfilePaths)) {
+    Remove-ManagedBlock -Path $profilePath -Tag 'bss-ai-boilerplate:main'
     Remove-ManagedBlock -Path $profilePath -Tag 'lazy-starter-kit:main'
   }
 
@@ -258,7 +259,7 @@ foreach ($tok in (@(@($Only) + @($Skip)) | ForEach-Object { $_ -split ',' } | Fo
 if (-not (Test-IsWindows)) { Stop-Kit "Windows only." }
 if ($script:DryRun) { Write-Warn "DRY-RUN: no changes will be made." }
 
-Write-Host "== lazy-starter-kit v$KitVersion - uninstall ==" -ForegroundColor White
+Write-Host "== bss-ai-boilerplate v$KitVersion - uninstall ==" -ForegroundColor White
 $selected = @(Get-SelectedGroups)
 Write-Info ("groups: " + ($selected -join ' '))
 Write-Warn "Your git identity is left untouched (remove manually if desired)."

@@ -1,4 +1,4 @@
-# Brewfile — declarative Homebrew manifest for lazy-starter-kit.
+# Brewfile — declarative Homebrew manifest for bss-ai-boilerplate.
 # Applied with: brew bundle --file Brewfile
 # Safe to edit: add/remove lines, then re-run ./install.sh --only brew
 

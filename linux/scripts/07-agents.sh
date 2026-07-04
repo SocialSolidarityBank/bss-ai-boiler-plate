@@ -2,13 +2,26 @@
 # 07-agents.sh — AI coding agents: gajae-code (gjc), codex, lazycodex (OmO), Hermes, Claude Code
 
 step_agents() {
-  step "AI agents: gajae-code + codex + lazycodex + Hermes + Claude Code"
+  local install_codex="${BSS_AI_INSTALL_CODEX:-1}"
+  local install_claude="${BSS_AI_INSTALL_CLAUDE:-1}"
+  local install_extras="${BSS_AI_INSTALL_EXTRAS:-1}"
+  local primary_failed=0
+  local title_parts=""
+  [[ "$install_extras" == "1" ]] && title_parts="${title_parts:+$title_parts + }gajae-code"
+  [[ "$install_codex" == "1" ]] && title_parts="${title_parts:+$title_parts + }codex"
+  [[ "$install_extras" == "1" && "$install_codex" == "1" ]] && title_parts="${title_parts:+$title_parts + }lazycodex"
+  [[ "$install_extras" == "1" ]] && title_parts="${title_parts:+$title_parts + }Hermes"
+  [[ "$install_claude" == "1" ]] && title_parts="${title_parts:+$title_parts + }Claude Code"
+  [[ -n "$title_parts" ]] || title_parts="record selected AI services"
+  step "AI agents: $title_parts"
   load_local_bins
   load_mise
   export PATH="$HOME/.bun/bin:$PATH"   # bun global bins (gjc) live here
 
   # --- gajae-code (gjc) via bun -----------------------------------------
-  if have bun; then
+  if [[ "$install_extras" != "1" ]]; then
+    :
+  elif have bun; then
     if have gjc; then
       ok "gajae-code present (gjc $(gjc --version 2>/dev/null | head -1))"
     else
@@ -23,7 +36,11 @@ step_agents() {
   # Official installer drops the `claude` binary into ~/.local/bin and then
   # self-updates in the background. Installs by default everywhere (incl. CI).
   # Kept ahead of the npm-dependent agents so a box without node still gets it.
-  if have claude; then
+  if [[ "$install_claude" != "1" ]]; then
+    :
+  elif [[ "$DRY_RUN" == "1" && "${BSS_AI_HELPER_FORCE_INSTALL_PREVIEW:-0}" == "1" ]]; then
+    info "[dry-run] curl -fsSL https://claude.ai/install.sh | bash"
+  elif have claude; then
     ok "Claude Code present ($(claude --version 2>/dev/null | head -1))"
   elif [[ "$DRY_RUN" == "1" ]]; then
     info "[dry-run] curl -fsSL https://claude.ai/install.sh | bash"
@@ -34,36 +51,51 @@ step_agents() {
     local cc_tmp; cc_tmp="$(mktemp)"
     if curl -fsSL https://claude.ai/install.sh -o "$cc_tmp" \
        && [[ -s "$cc_tmp" ]] && head -1 "$cc_tmp" | grep -q '^#!'; then
-      bash "$cc_tmp" \
-        || warn "Claude Code install did not complete — re-run later: curl -fsSL https://claude.ai/install.sh | bash"
+      if ! bash "$cc_tmp"; then
+        warn "Claude Code install did not complete — re-run later: curl -fsSL https://claude.ai/install.sh | bash"
+        primary_failed=1
+      fi
     else
       warn "Claude Code install did not complete — re-run later: curl -fsSL https://claude.ai/install.sh | bash"
+      primary_failed=1
     fi
     rm -f "$cc_tmp"
   fi
 
   # --- codex (base harness that lazycodex extends) ----------------------
+  if [[ "$install_codex" != "1" && "$install_extras" != "1" ]]; then
+    return "$primary_failed"
+  fi
   if ! have npm; then
     if [[ "$DRY_RUN" == "1" ]]; then
-      info "[dry-run] npm install -g @openai/codex"
-      info "[dry-run] npx --yes lazycodex-ai install"
+      [[ "$install_codex" == "1" ]] && info "[dry-run] npm install -g @openai/codex"
+      [[ "$install_extras" == "1" && "$install_codex" == "1" ]] && info "[dry-run] npx --yes lazycodex-ai install"
     else
       warn "npm not found — skipping codex + lazycodex (run the 'runtimes' step first)"
+      [[ "$install_codex" == "1" ]] && primary_failed=1
     fi
-    return 0
-  fi
-  if have codex; then
+  elif [[ "$install_codex" != "1" ]]; then
+    :
+  elif [[ "$DRY_RUN" == "1" && "${BSS_AI_HELPER_FORCE_INSTALL_PREVIEW:-0}" == "1" ]]; then
+    info "[dry-run] npm install -g @openai/codex"
+  elif have codex; then
     ok "codex present ($(codex --version 2>/dev/null | head -1))"
   else
     info "Installing @openai/codex (npm -g)…"
-    run npm install -g @openai/codex
-    # mise-managed node needs a reshim so the `codex` shim appears on PATH
-    have mise && run mise reshim
+    if run npm install -g @openai/codex; then
+      # mise-managed node needs a reshim so the `codex` shim appears on PATH
+      have mise && run mise reshim
+    else
+      warn "Codex CLI install did not complete — re-run after Node/npm is available"
+      primary_failed=1
+    fi
   fi
 
   # --- lazycodex (OmO agent harness for codex) --------------------------
   # No global install by design — always run via npx.
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "$install_extras" != "1" || "$install_codex" != "1" ]]; then
+    :
+  elif [[ "$DRY_RUN" == "1" ]]; then
     info "[dry-run] npx --yes lazycodex-ai install"
   elif is_tty && [[ "$ASSUME_YES" != "1" ]]; then
     info "Installing lazycodex (npx lazycodex-ai install)…"
@@ -73,14 +105,16 @@ step_agents() {
     npx --yes lazycodex-ai install --no-tui --codex-autonomous || \
       warn "lazycodex installer did not complete"
   fi
-  info "lazycodex: on first 'codex' launch, APPROVE the omo hooks in the startup review."
+  [[ "$install_extras" == "1" && "$install_codex" == "1" ]] && info "lazycodex: on first 'codex' launch, APPROVE the omo hooks in the startup review."
 
   # --- Hermes Agent (Nous Research) -------------------------------------
   # Official installer self-manages Python/Node/Chromium and links `hermes`
   # into ~/.local/bin. Heavy + external, so it's non-fatal and toggleable
   # with HERMES=0 (CI sets HERMES=0 to stay lean).
   export PATH="$HOME/.local/bin:$PATH"
-  if [[ "${HERMES:-1}" != "1" ]]; then
+  if [[ "$install_extras" != "1" ]]; then
+    :
+  elif [[ "${HERMES:-1}" != "1" ]]; then
     info "Skipping Hermes Agent (HERMES=0)"
   elif have hermes; then
     ok "Hermes Agent present ($(hermes --version 2>/dev/null | head -1 || echo installed))"
@@ -92,4 +126,5 @@ step_agents() {
       || warn "Hermes installer did not complete (re-run later: curl … | bash)"
     info "Hermes: configure with 'hermes setup --portal', then start with 'hermes'."
   fi
+  return "$primary_failed"
 }

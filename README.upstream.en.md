@@ -12,7 +12,7 @@ _Runtimes · shell · containers · and AI coding agents — installed and verif
 [![Platform](https://img.shields.io/badge/macOS-Apple%20Silicon-000000?logo=apple&logoColor=white)](#)
 [![Stars](https://img.shields.io/github/stars/Heoooooon/lazy-starter-kit?style=flat&color=f0c000)](https://github.com/Heoooooon/lazy-starter-kit/stargazers)
 
-[한국어](./README.md) · **English** · [Install flow ↗](https://heoooooon.github.io/lazy-starter-kit/) · [Changelog](./CHANGELOG.md)
+[한국어](./README.upstream.ko.md) · **English** · [Install flow ↗](https://heoooooon.github.io/lazy-starter-kit/) · [Changelog](./CHANGELOG.md)
 
 **Platforms:** **macOS** (this page) · [Linux](./linux/README.md) · [Windows](./windows/README.md)
 

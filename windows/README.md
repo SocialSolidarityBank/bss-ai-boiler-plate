@@ -10,9 +10,25 @@ _winget packages · runtimes · PowerShell profile · containers · and AI codin
 
 ---
 
+## BSS AI Helper로 시작하기
+
+> 출처: 이 키트는 [`foxion37/lazy-starter-kit`](https://github.com/foxion37/lazy-starter-kit)을 포크해 시작했고, BSS AI Helper용 질문형 설치 보일러플레이트로 다시 설계했습니다.
+
+먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.
+
+```powershell
+git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper
+cd ~/bss-ai-helper
+codex
+```
+
+Codex가 열리면 `BSS AI Helper 실행해줘`라고 말합니다. 설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다. 권한이 막히면 필요한 권한 설정 방법을 알려주고 다시 진행할 수 있습니다.
+
+터미널에서는 `bss-ai-helper`, `ai-helper`, `bss-ai`를 사용할 수 있습니다. 개발자와 CI는 `-Status`, `-DryRun`, `-List`를 계속 사용할 수 있습니다.
+
 > **🇰🇷 한국어 빠른 시작** — 시작 버튼에서 `PowerShell`을 찾아 열고, 아래 한 줄을 붙여넣고 Enter:
 > ```powershell
-> irm https://raw.githubusercontent.com/Heoooooon/lazy-starter-kit/main/windows/install.ps1 | iex
+> irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-helper/main/windows/install.ps1 | iex
 > ```
 > 끝나면 PowerShell을 새로 여세요. 막히면 앞에 `powershell -ExecutionPolicy Bypass -Command "..."`로 감싸 실행. (한국어 전체 안내: [저장소 메인 README](../README.md#-windows-설치-제일-자세히))
 
@@ -21,14 +37,14 @@ _winget packages · runtimes · PowerShell profile · containers · and AI codin
 Open **PowerShell** (Windows PowerShell 5.1 or PowerShell 7) and run:
 
 ```powershell
-irm https://raw.githubusercontent.com/Heoooooon/lazy-starter-kit/main/windows/install.ps1 | iex
+irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-helper/main/windows/install.ps1 | iex
 ```
 
 Prefer to read before you run (recommended):
 
 ```powershell
-git clone https://github.com/Heoooooon/lazy-starter-kit.git
-cd lazy-starter-kit\windows
+git clone https://github.com/socialsolidaritybank/bss-ai-helper.git
+cd ~/bss-ai-helper/windows
 .\install.ps1 -DryRun     # see exactly what it would do
 .\install.ps1             # apply
 ```
@@ -61,6 +77,7 @@ prereqs  packages  runtimes  shell  docker  git  agents
 ```
 
 ```powershell
+.\install.ps1 -Status               # show saved helper progress
 .\install.ps1 -DryRun               # change nothing, just print
 .\install.ps1 -Yes                  # non-interactive, accept defaults
 .\install.ps1 -Only packages,shell  # run a subset
@@ -72,7 +89,7 @@ prereqs  packages  runtimes  shell  docker  git  agents
 
 Every step is **idempotent** — safe to re-run. Your PowerShell profile
 (`$PROFILE.CurrentUserAllHosts`) is edited via a clearly marked managed block
-(`# >>> lazy-starter-kit:main >>>`) that gets replaced (never duplicated) on
+(`# >>> bss-ai-helper:main >>>`) that gets replaced (never duplicated) on
 re-runs. Existing files you own are preserved.
 
 ## Design notes

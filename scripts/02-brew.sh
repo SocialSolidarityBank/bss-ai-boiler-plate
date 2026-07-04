@@ -5,6 +5,7 @@ step_brew() {
   step "Homebrew packages (Brewfile)"
   load_brew
   local brewfile="$ROOT/Brewfile"
+  local company_brewfile="$ROOT/Brewfile.bss"
   [[ -f "$brewfile" ]] || die "missing Brewfile at $brewfile"
 
   # In a full dry-run on a bare machine, Homebrew isn't installed yet (the
@@ -20,6 +21,7 @@ step_brew() {
   export HOMEBREW_NO_ENV_HINTS=1
   if [[ "$DRY_RUN" == "1" ]]; then
     info "[dry-run] brew bundle --file=$brewfile  (would install missing formulae/casks)"
+    [[ -f "$company_brewfile" ]] && info "[dry-run] brew bundle --file=$company_brewfile  (BSS additions)"
     info "[dry-run] pending entries:"
     brew bundle check --file="$brewfile" --verbose 2>/dev/null | sed 's/^/    /' || true
     return 0
@@ -28,5 +30,8 @@ step_brew() {
   run brew update --quiet || warn "brew update failed (continuing)"
   # --no-lock was removed in modern Homebrew; bundle no longer writes a lockfile by default
   run brew bundle install --file="$brewfile"
+  if [[ -f "$company_brewfile" ]]; then
+    run brew bundle install --file="$company_brewfile"
+  fi
   ok "Brewfile applied"
 }

@@ -2,11 +2,23 @@
 # Claude Code (claude)
 
 function Step-Agents {
-  Write-Step "AI agents: gajae-code + codex + lazycodex + Claude Code"
+  $installCodex = ($env:BSS_AI_INSTALL_CODEX -ne '0')
+  $installClaude = ($env:BSS_AI_INSTALL_CLAUDE -ne '0')
+  $installExtras = ($env:BSS_AI_INSTALL_EXTRAS -ne '0')
+  $forcePreview = ($env:BSS_AI_HELPER_FORCE_INSTALL_PREVIEW -eq '1')
+  $primaryFailed = $false
+  $titleParts = @()
+  if ($installExtras) { $titleParts += 'gajae-code' }
+  if ($installCodex) { $titleParts += 'codex' }
+  if ($installExtras -and $installCodex) { $titleParts += 'lazycodex' }
+  if ($installClaude) { $titleParts += 'Claude Code' }
+  $title = if ($titleParts.Count -gt 0) { $titleParts -join ' + ' } else { 'record selected AI services' }
+  Write-Step "AI agents: $title"
   Update-SessionPath
 
   # --- gajae-code (gjc) via bun -----------------------------------------
-  if (Test-HasCommand bun) {
+  if (-not $installExtras) {
+  } elseif (Test-HasCommand bun) {
     if (Test-HasCommand gjc) {
       Write-Ok "gajae-code present (gjc $(Invoke-NativeSilently 'gjc' @('--version') | Select-Object -First 1))"
     } else {
@@ -19,51 +31,70 @@ function Step-Agents {
   }
 
   # --- codex (base harness that lazycodex extends) ----------------------
-  $haveNpm = Test-HasCommand npm
-  if (-not $haveNpm -and (Test-HasCommand mise)) {
-    # npm may only be reachable through mise's node shim
-    $haveNpm = $true
-  }
-  if (-not $haveNpm) {
-    Write-Warn "npm not found -- skipping codex + lazycodex (run the 'runtimes' step first)"
-    return
-  }
-
-  if (Test-HasCommand codex) {
-    Write-Ok "codex present ($(Invoke-NativeSilently 'codex' @('--version') | Select-Object -First 1))"
-  } else {
-    Write-Info "Installing @openai/codex (npm -g)..."
-    if ($script:DryRun) {
-      Write-Info "[dry-run] mise exec -- npm install -g @openai/codex; mise reshim"
-    } else {
-      if (Test-HasCommand mise) {
-        & mise exec -- npm install -g '@openai/codex'
-        Invoke-NativeSilently 'mise' @('reshim')
+  if ($installCodex) {
+    $haveNpm = Test-HasCommand npm
+    if (-not $haveNpm -and (Test-HasCommand mise)) {
+      # npm may only be reachable through mise's node shim
+      $haveNpm = $true
+    }
+    if (-not $haveNpm) {
+      if ($script:DryRun) {
+        Write-Info "[dry-run] mise exec -- npm install -g @openai/codex; mise reshim"
       } else {
-        & npm install -g '@openai/codex'
+        Write-Warn "npm not found -- skipping codex + lazycodex (run the 'runtimes' step first)"
+        if ($installCodex) { $primaryFailed = $true }
+      }
+    } else {
+      if ($script:DryRun -and $forcePreview) {
+        Write-Info "[dry-run] mise exec -- npm install -g @openai/codex; mise reshim"
+      } elseif (Test-HasCommand codex) {
+        Write-Ok "codex present ($(Invoke-NativeSilently 'codex' @('--version') | Select-Object -First 1))"
+      } else {
+        Write-Info "Installing @openai/codex (npm -g)..."
+        if ($script:DryRun) {
+          Write-Info "[dry-run] mise exec -- npm install -g @openai/codex; mise reshim"
+        } else {
+          try {
+            if (Test-HasCommand mise) {
+              & mise exec -- npm install -g '@openai/codex'
+              if ($LASTEXITCODE -ne 0) { throw "mise npm install failed with exit $LASTEXITCODE" }
+              Invoke-NativeSilently 'mise' @('reshim')
+            } else {
+              & npm install -g '@openai/codex'
+              if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit $LASTEXITCODE" }
+            }
+          } catch {
+            Write-Warn "Codex CLI install did not complete -- re-run after Node/npm is available"
+            $primaryFailed = $true
+          }
+        }
+        Update-SessionPath
+      }
+
+      if ($installExtras) {
+        if ($script:DryRun) {
+          Write-Info "[dry-run] npx --yes lazycodex-ai install"
+        } elseif (-not [Console]::IsInputRedirected) {
+          Write-Info "Installing lazycodex (npx lazycodex-ai install)..."
+          & npx --yes lazycodex-ai install
+          if ($LASTEXITCODE -ne 0) { Write-Warn "lazycodex installer did not complete" }
+        } else {
+          Write-Info "Installing lazycodex (non-interactive, autonomous)..."
+          & npx --yes lazycodex-ai install --no-tui --codex-autonomous
+          if ($LASTEXITCODE -ne 0) { Write-Warn "lazycodex installer did not complete" }
+        }
+        Write-Info "lazycodex: on first 'codex' launch, APPROVE the omo hooks in the startup review."
       }
     }
-    Update-SessionPath
   }
-
-  # --- lazycodex (OmO harness for codex) -- always via npx ----------------
-  if ($script:DryRun) {
-    Write-Info "[dry-run] npx --yes lazycodex-ai install"
-  } elseif (-not [Console]::IsInputRedirected) {
-    Write-Info "Installing lazycodex (npx lazycodex-ai install)..."
-    & npx --yes lazycodex-ai install
-    if ($LASTEXITCODE -ne 0) { Write-Warn "lazycodex installer did not complete" }
-  } else {
-    Write-Info "Installing lazycodex (non-interactive, autonomous)..."
-    & npx --yes lazycodex-ai install --no-tui --codex-autonomous
-    if ($LASTEXITCODE -ne 0) { Write-Warn "lazycodex installer did not complete" }
-  }
-  Write-Info "lazycodex: on first 'codex' launch, APPROVE the omo hooks in the startup review."
 
   # --- Claude Code (claude) via the official installer ------------------
   # https://claude.ai/install.ps1 is non-interactive, works on WinPS 5.1+/7,
   # installs to ~/.local/bin/claude.exe, and self-updates in the background.
-  if (Test-HasCommand claude) {
+  if (-not $installClaude) {
+  } elseif ($script:DryRun -and $forcePreview) {
+    Write-Info "[dry-run] irm https://claude.ai/install.ps1 | iex"
+  } elseif (Test-HasCommand claude) {
     Write-Ok "Claude Code present ($(Invoke-NativeSilently 'claude' @('--version') | Select-Object -First 1))"
   } elseif ($script:DryRun) {
     Write-Info "[dry-run] irm https://claude.ai/install.ps1 | iex"
@@ -87,12 +118,16 @@ function Step-Agents {
       }
     } catch {
       Write-Warn "Claude Code install did not complete -- re-run later: irm https://claude.ai/install.ps1 | iex"
+      $primaryFailed = $true
     }
   }
 
   # --- Hermes Agent (Nous Research) -------------------------------------
   # The official installer is a bash/curl script with no native Windows build.
   # Run it inside WSL if you want Hermes on Windows.
-  Write-Info "Hermes Agent: no native Windows installer -- install it inside WSL2:"
-  Write-Info "  wsl bash -c 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup'"
+  if ($installExtras) {
+    Write-Info "Hermes Agent: no native Windows installer -- install it inside WSL2:"
+    Write-Info "  wsl bash -c 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup'"
+  }
+  return (-not $primaryFailed)
 }

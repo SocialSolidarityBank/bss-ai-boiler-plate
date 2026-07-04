@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# lazy-starter-kit — uninstaller. Reverses what install.sh set up, in reverse
+# bss-ai-boilerplate — uninstaller. Reverses what install.sh set up, in reverse
 # dependency order, idempotently. Destructive groups are confirm-gated.
 #
 # What it NEVER removes automatically:
@@ -150,6 +150,8 @@ undo_agents() {
 # ---------------------------------------------------------------------------
 undo_shell() {
   step "Revert shell configuration"
+  remove_block "$HOME/.zshrc"    "bss-ai-boilerplate:main"
+  remove_block "$HOME/.zshrc"    "bss-ai-boilerplate:ohmyzsh"
   remove_block "$HOME/.zshrc"    "lazy-starter-kit:main"
   remove_block "$HOME/.zshrc"    "lazy-starter-kit:ohmyzsh"
 
@@ -263,7 +265,7 @@ while [[ $# -gt 0 ]]; do
     --with-gajae)      export WITH_GAJAE=1 ;;
     --keep-codex-home) export KEEP_CODEX_HOME=1 ;;
     --list)            printf '%s\n' "${GROUP_IDS[@]}"; exit 0 ;;
-    -V|--version)      echo "lazy-starter-kit $KIT_VERSION"; exit 0 ;;
+    -V|--version)      echo "bss-ai-boilerplate $KIT_VERSION"; exit 0 ;;
     -h|--help)         usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -306,7 +308,7 @@ selected() {
 is_linux || die "Linux only."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== lazy-starter-kit v$KIT_VERSION · uninstall ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== bss-ai-boilerplate v$KIT_VERSION · uninstall ==$_C_RESET"
 info "groups: $(selected | tr '\n' ' ')"
 warn "Your git identity and system build tools are left untouched (remove manually if desired)."
 

@@ -96,6 +96,27 @@ _install_gh() {
   esac
 }
 
+_install_bss_packages() {
+  local company_config="$ROOT/config/bss-packages.sh"
+  local -a BSS_APT_PACKAGES=()
+  local -a BSS_DNF_PACKAGES=()
+  local -a BSS_YUM_PACKAGES=()
+  local -a BSS_PACMAN_PACKAGES=()
+  local -a BSS_ZYPPER_PACKAGES=()
+  local -a BSS_APK_PACKAGES=()
+  [[ -f "$company_config" ]] || return 0
+  # shellcheck source=linux/config/bss-packages.sh
+  source "$company_config"
+  case "$PM" in
+    apt)    [[ "${#BSS_APT_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_APT_PACKAGES[@]}" ;;
+    dnf)    [[ "${#BSS_DNF_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_DNF_PACKAGES[@]}" ;;
+    yum)    [[ "${#BSS_YUM_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_YUM_PACKAGES[@]}" ;;
+    pacman) [[ "${#BSS_PACMAN_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_PACMAN_PACKAGES[@]}" ;;
+    zypper) [[ "${#BSS_ZYPPER_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_ZYPPER_PACKAGES[@]}" ;;
+    apk)    [[ "${#BSS_APK_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_APK_PACKAGES[@]}" ;;
+  esac
+}
+
 step_packages() {
   step "CLI tools + developer toolchain installers"
 
@@ -125,6 +146,7 @@ step_packages() {
   _install_bun
   _install_rustup
   _install_gh
+  _install_bss_packages
 
   load_local_bins
   ok "packages step complete"

@@ -1,4 +1,4 @@
-# managed by lazy-starter-kit — edits between the markers are overwritten on re-run.
+# managed by bss-ai-boilerplate — edits between the markers are overwritten on re-run.
 
 # mise: node / python / go version manager
 command -v mise >/dev/null && eval "$(mise activate zsh)"
@@ -15,6 +15,11 @@ export BUN_INSTALL="$HOME/.bun"
 # ~/.local/bin: user-local commands (e.g. hermes / Hermes Agent)
 [ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 
+[ -d "$HOME/.bss-ai-helper/bin" ] && export PATH="$HOME/.bss-ai-helper/bin:$PATH"
+alias bss-ai-helper="$HOME/.bss-ai-helper/bin/bss-ai-helper"
+alias ai-helper='bss-ai-helper'
+alias bss-ai='bss-ai-helper'
+
 # oh-my-zsh plugins (sourced directly so they work regardless of plugins=() line)
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 [ -f "$ZSH_CUSTOM/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ] \
@@ -23,7 +28,9 @@ ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
   && source "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
 # fzf: fuzzy finder keybindings + completion (Ctrl-R history, Ctrl-T files, Alt-C cd)
-command -v fzf >/dev/null && source <(fzf --zsh)
+if [[ -o interactive && -t 0 ]] && command -v fzf >/dev/null; then
+  source <(fzf --zsh)
+fi
 
 # bat: nicer cat
 command -v bat >/dev/null && alias cat='bat --paging=never'

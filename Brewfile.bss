@@ -1,0 +1,7 @@
+# Brewfile.bss — BSS-specific macOS additions.
+# Applied automatically after Brewfile. Keep this file lean; heavy or licensed
+# tools should stay opt-in until the company policy is confirmed.
+
+# Example:
+# brew "op"     # 1Password CLI
+# cask "slack"  # Slack desktop app

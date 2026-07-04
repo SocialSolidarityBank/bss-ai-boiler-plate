@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# lazy-starter-kit — uninstaller. Reverses what install.sh set up, in reverse
+# bss-ai-boilerplate — uninstaller. Reverses what install.sh set up, in reverse
 # dependency order, idempotently. Destructive groups are confirm-gated.
 #
 # What it NEVER removes automatically (too system-wide / your data):
@@ -160,15 +160,13 @@ undo_agents() {
 # ---------------------------------------------------------------------------
 undo_shell() {
   step "Revert shell configuration"
-  remove_block "$HOME/.zshrc"            "lazy-starter-kit:main"
-  remove_block "$HOME/.zshrc"            "lazy-starter-kit:ohmyzsh"
-  remove_block "$HOME/.zprofile"         "lazy-starter-kit:brew"
-  remove_block "$HOME/.config/ghostty/config" "lazy-starter-kit:ghostty"
-  # also strip legacy 'macos-starter-kit:*' blocks (installs from before the rename)
-  remove_block "$HOME/.zshrc"            "macos-starter-kit:main"
-  remove_block "$HOME/.zshrc"            "macos-starter-kit:ohmyzsh"
-  remove_block "$HOME/.zprofile"         "macos-starter-kit:brew"
-  remove_block "$HOME/.config/ghostty/config" "macos-starter-kit:ghostty"
+  local tag
+  for tag in bss-ai-boilerplate lazy-starter-kit macos-starter-kit; do
+    remove_block "$HOME/.zshrc" "$tag:main"
+    remove_block "$HOME/.zshrc" "$tag:ohmyzsh"
+    remove_block "$HOME/.zprofile" "$tag:brew"
+    remove_block "$HOME/.config/ghostty/config" "$tag:ghostty"
+  done
 
   if [[ -f "$HOME/.config/starship.toml" ]]; then
     if confirm "Remove ~/.config/starship.toml?"; then run rm -f "$HOME/.config/starship.toml"
@@ -278,7 +276,7 @@ while [[ $# -gt 0 ]]; do
     --with-gajae)      export WITH_GAJAE=1 ;;
     --keep-codex-home) export KEEP_CODEX_HOME=1 ;;
     --list)            printf '%s\n' "${GROUP_IDS[@]}"; exit 0 ;;
-    -V|--version)      echo "lazy-starter-kit $KIT_VERSION"; exit 0 ;;
+    -V|--version)      echo "bss-ai-boilerplate $KIT_VERSION"; exit 0 ;;
     -h|--help)         usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -321,7 +319,7 @@ selected() {
 is_macos || die "macOS only."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== lazy-starter-kit v$KIT_VERSION · uninstall ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== bss-ai-boilerplate v$KIT_VERSION · uninstall ==$_C_RESET"
 info "groups: $(selected | tr '\n' ' ')"
 warn "Homebrew, Xcode CLT, and your git identity are left untouched (remove manually if desired)."
 

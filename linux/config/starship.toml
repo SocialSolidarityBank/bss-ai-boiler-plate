@@ -1,4 +1,4 @@
-# starship config — installed by lazy-starter-kit.
+# starship config — installed by bss-ai-boilerplate.
 # Tweak freely; docs: https://starship.rs/config/
 
 add_newline = true

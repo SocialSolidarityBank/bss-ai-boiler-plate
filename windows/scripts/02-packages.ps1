@@ -28,6 +28,16 @@ function Step-Packages {
     Install-WingetPackage -Id $id -Name $packages[$id]
   }
 
+  $bssPackagesFile = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\config\bss-packages.ps1'))
+  if (Test-Path $bssPackagesFile) {
+    . $bssPackagesFile
+    if ((Test-Path variable:BssPackages) -and $BssPackages.Count -gt 0) {
+      foreach ($id in $BssPackages.Keys) {
+        Install-WingetPackage -Id $id -Name $BssPackages[$id]
+      }
+    }
+  }
+
   # `tree` and `curl` are built into Windows; ast-grep is installed via mise
   # (ubi backend) in the runtimes step to stay in lockstep with the other kits.
 

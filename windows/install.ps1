@@ -1,7 +1,7 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  lazy-starter-kit -- install a complete Windows dev environment from scratch.
+  bss-ai-boilerplate -- install the BSS Windows development environment.
 
 .DESCRIPTION
   From a fresh machine -> winget packages, runtimes, PowerShell profile, Docker,
@@ -25,7 +25,7 @@
   Print the kit version and exit.
 
 .EXAMPLE
-  irm https://raw.githubusercontent.com/Heoooooon/lazy-starter-kit/main/windows/install.ps1 | iex
+  $env:BSS_BOILERPLATE_REPO='<repo-url>'; .\install.ps1
 
 .EXAMPLE
   .\install.ps1 -DryRun
@@ -39,6 +39,10 @@ param(
   [switch]$NoAgents,
   [switch]$List,
   [switch]$Version,
+  [switch]$Status,
+  [switch]$ResetState,
+  [switch]$Classic,
+  [switch]$Wizard,
   [switch]$Help
 )
 
@@ -52,9 +56,9 @@ $ErrorActionPreference = 'Stop'
 $script:RunFromFile = [bool]$PSCommandPath
 
 $HomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
-$RepoUrl    = if ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/Heoooooon/lazy-starter-kit.git' }
-$RepoBranch = if ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
-$CloneDir   = if ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir '.lazy-starter-kit' }
+$RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/bss-ai-helper.git' }
+$RepoBranch = if ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
+$CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-helper' }
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the windows\ dir), or bootstrap by cloning.
@@ -64,7 +68,7 @@ function Resolve-Root {
   if (-not $dir) { try { $dir = Split-Path -Parent $MyInvocation.MyCommand.Path } catch {} }
   if ($dir -and (Test-Path (Join-Path $dir 'scripts\lib.ps1'))) { return $dir }
 
-  Write-Host "==> Bootstrapping lazy-starter-kit into $CloneDir" -ForegroundColor Blue
+  Write-Host "==> Bootstrapping bss-ai-boilerplate into $CloneDir" -ForegroundColor Blue
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     # A piped one-liner (irm | iex) needs git to clone the kit. On a fresh
     # machine, install it via winget, then refresh PATH for this session.
@@ -77,7 +81,7 @@ function Resolve-Root {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
       Write-Host "==> git still not found. Either:" -ForegroundColor Red
       Write-Host "    1) install git:  winget install --id Git.Git   (then re-run), or" -ForegroundColor Red
-      Write-Host "    2) download the ZIP: https://github.com/Heoooooon/lazy-starter-kit/archive/refs/heads/main.zip" -ForegroundColor Red
+      Write-Host "    2) download the ZIP from your BSS boilerplate repository" -ForegroundColor Red
       Write-Host "       extract it, then run  windows\install.ps1" -ForegroundColor Red
       if ($script:RunFromFile) { exit 1 } else { throw "git is required -- install it and re-run (see options above)." }
     }
@@ -111,6 +115,7 @@ if ((-not $self) -or ($self -ne $target)) {
 . (Join-Path $Root 'scripts\lib.ps1')
 $script:DryRun    = [bool]$DryRun
 $script:AssumeYes = [bool]$Yes
+. (Join-Path $Root 'scripts\state.ps1')
 
 $versionFile = Join-Path $Root '..\VERSION'
 $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { 'dev' }
@@ -140,7 +145,28 @@ $StepFunc = @{
 
 if ($Help)    { Get-Help $target -Detailed;                    if ($script:RunFromFile) { exit 0 } else { return } }
 if ($List)    { $StepIds | ForEach-Object { Write-Output $_ }; if ($script:RunFromFile) { exit 0 } else { return } }
-if ($Version) { Write-Output "lazy-starter-kit $KitVersion";    if ($script:RunFromFile) { exit 0 } else { return } }
+if ($Version) { Write-Output "bss-ai-boilerplate $KitVersion";    if ($script:RunFromFile) { exit 0 } else { return } }
+if ($Status)  { Show-HelperStatus;                              if ($script:RunFromFile) { exit 0 } else { return } }
+if ($ResetState) {
+  $state = Get-StatePath
+  if (-not (Test-Path $state)) {
+    Write-Info "삭제할 진행 상태가 없습니다."
+  } elseif (Confirm-Action "저장된 진행 상태를 삭제할까요? 작업 기록과 리포트/HTML은 남깁니다." -DefaultNo) {
+    Remove-Item $state -Force
+    Write-Info "진행 상태를 삭제했습니다. history.jsonl, latest-report.md, manual/index.html은 남겨 두었습니다."
+  } else {
+    Write-Info "진행 상태를 그대로 둡니다."
+  }
+  if ($script:RunFromFile) { exit 0 } else { return }
+}
+$directMode = [bool]($Classic -or $Yes -or $Only.Count -gt 0 -or $Skip.Count -gt 0 -or $NoAgents)
+if (($Wizard -or ((-not $directMode) -and (-not [Console]::IsInputRedirected))) -and -not $Classic)  {
+  if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
+  . (Join-Path $Root 'scripts\recommendations.ps1')
+  . (Join-Path $Root 'scripts\wizard.ps1')
+  Start-Wizard -Platform 'Windows' -Root $Root
+  if ($script:RunFromFile) { exit 0 } else { return }
+}
 
 if ($NoAgents) { $Skip = @($Skip) + 'agents' }
 
@@ -168,7 +194,7 @@ function Get-SelectedSteps {
 if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
 if ($script:DryRun) { Write-Warn "DRY-RUN: no changes will be made." }
 
-Write-Host "== lazy-starter-kit v$KitVersion ==" -ForegroundColor White
+Write-Host "== bss-ai-boilerplate v$KitVersion ==" -ForegroundColor White
 $selected = @(Get-SelectedSteps)
 Write-Info ("steps: " + ($selected -join ' '))
 

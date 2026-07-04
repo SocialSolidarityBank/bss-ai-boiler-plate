@@ -1,4 +1,4 @@
-# managed by lazy-starter-kit -- edits between the markers are overwritten on re-run.
+# managed by bss-ai-boilerplate -- edits between the markers are overwritten on re-run.
 
 # mise: node / python / go version manager
 if (Get-Command mise -ErrorAction SilentlyContinue) {
@@ -22,6 +22,14 @@ if (Test-Path (Join-Path $env:USERPROFILE '.cargo\bin')) {
 if (Test-Path (Join-Path $env:USERPROFILE '.local\bin')) {
   $env:Path = (Join-Path $env:USERPROFILE '.local\bin') + ';' + $env:Path
 }
+
+$BssAiHelperBin = Join-Path $env:USERPROFILE '.bss-ai-helper\bin'
+if (Test-Path $BssAiHelperBin) {
+  $env:Path = $BssAiHelperBin + ';' + $env:Path
+}
+function bss-ai-helper { & (Join-Path $env:USERPROFILE '.bss-ai-helper\bin\bss-ai-helper.ps1') @args }
+function ai-helper { bss-ai-helper @args }
+function bss-ai { bss-ai-helper @args }
 
 # PSReadLine: zsh-autosuggestions-style inline prediction + completion menu.
 # (Syntax highlighting as you type is built into PSReadLine -- no config needed.)

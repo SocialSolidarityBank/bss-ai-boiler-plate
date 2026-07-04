@@ -1,7 +1,12 @@
-# managed by lazy-starter-kit — edits between the markers are overwritten on re-run.
+# managed by bss-ai-boilerplate — edits between the markers are overwritten on re-run.
 
 # ~/.local/bin: user-local commands (mise, starship, uv, hermes …)
 [ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+
+[ -d "$HOME/.bss-ai-helper/bin" ] && export PATH="$HOME/.bss-ai-helper/bin:$PATH"
+alias bss-ai-helper="$HOME/.bss-ai-helper/bin/bss-ai-helper"
+alias ai-helper='bss-ai-helper'
+alias bss-ai='bss-ai-helper'
 
 # mise: node / python / go version manager
 command -v mise >/dev/null && eval "$(mise activate zsh)"

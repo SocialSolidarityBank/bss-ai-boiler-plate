@@ -1,0 +1,13 @@
+BSS AI Helper
+
+This repository was forked from foxion37/lazy-starter-kit:
+https://github.com/foxion37/lazy-starter-kit
+
+BSS AI Helper는 위 원본 저장소를 바탕으로, 사회연대은행 사용 환경에 맞춘 질문형 설치 보일러플레이트로 다시 설계했습니다.
+
+The upstream README files are preserved for comparison and attribution:
+
+- README.upstream.ko.md
+- README.upstream.en.md
+
+The original project is distributed under the MIT License.

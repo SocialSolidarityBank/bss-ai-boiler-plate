@@ -45,6 +45,18 @@ jobs:
       - name: shellcheck
         run: shellcheck -x -S warning -e SC2154 linux/install.sh linux/uninstall.sh linux/scripts/*.sh
 
+  lane3-qa:
+    name: lane 3 fake-home QA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: run lane 3 scripted QA
+        env:
+          BSS_AI_HELPER_HOME: ${{ runner.temp }}/bss-ai-helper-home
+        run: |
+          chmod +x scripts/qa/*.sh scripts/09-codex-resume.sh scripts/10-report.sh scripts/11-publish-readiness.sh
+          scripts/qa/lane3-all.sh
+
   linux-e2e:
     name: linux install -> uninstall (ubuntu)
     runs-on: ubuntu-latest
@@ -73,7 +85,7 @@ jobs:
           done
           command -v ast-grep >/dev/null 2>&1 && echo "ok   ast-grep" || { echo "MISS ast-grep"; fail=1; }
           for t in gjc codex claude; do need "$t"; done
-          grep -q 'lazy-starter-kit:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
+          grep -q 'bss-ai-boilerplate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
           exit $fail
 
       - name: uninstall (teardown)
@@ -81,7 +93,7 @@ jobs:
 
       - name: verify removed
         run: |
-          if grep -q 'lazy-starter-kit' "$HOME/.zshrc" 2>/dev/null; then
+          if grep -q 'bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then
             echo "STILL zshrc block"; exit 1
           fi
           echo "ok   zshrc block removed"
@@ -158,7 +170,7 @@ jobs:
           done
           command -v ast-grep >/dev/null 2>&1 && echo "ok   ast-grep" || { echo "MISS ast-grep"; fail=1; }
           for t in gjc codex claude; do need "$t"; done
-          grep -q 'lazy-starter-kit:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
+          grep -q 'bss-ai-boilerplate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
           exit $fail
 
       - name: uninstall (teardown)
@@ -166,7 +178,7 @@ jobs:
 
       - name: verify removed
         run: |
-          if grep -q 'lazy-starter-kit' "$HOME/.zshrc" 2>/dev/null; then
+          if grep -q 'bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then
             echo "STILL zshrc block"; exit 1
           fi
           echo "ok   zshrc block removed"
@@ -237,7 +249,7 @@ jobs:
           echo "go:     $(go version)"
           echo "codex:  $(codex --version 2>/dev/null | head -1 || echo '?')"
           test -d "$HOME/.oh-my-zsh"            || { echo "MISS oh-my-zsh"; fail=1; }
-          grep -q 'lazy-starter-kit:main' "$HOME/.zshrc" || { echo "MISS zshrc block"; fail=1; }
+          grep -q 'bss-ai-boilerplate:main' "$HOME/.zshrc" || { echo "MISS zshrc block"; fail=1; }
           test -d "$HOME/.codex/plugins/cache/sisyphuslabs/omo" && echo "ok   lazycodex/omo" || echo "warn lazycodex/omo not found"
           exit $fail
 
@@ -253,7 +265,7 @@ jobs:
           gone() { command -v "$1" >/dev/null 2>&1 && { echo "STILL $1"; fail=1; } || echo "gone $1"; }
           for t in gjc codex claude starship mise; do gone "$t"; done
           test -d "$HOME/.oh-my-zsh" && { echo "STILL oh-my-zsh"; fail=1; } || echo "gone oh-my-zsh"
-          if grep -q 'lazy-starter-kit' "$HOME/.zshrc" 2>/dev/null; then echo "STILL zshrc block"; fail=1; else echo "gone zshrc block"; fi
+          if grep -q 'bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then echo "STILL zshrc block"; fail=1; else echo "gone zshrc block"; fi
           test -x /opt/homebrew/bin/brew && echo "ok   Homebrew preserved" || { echo "Homebrew missing!"; fail=1; }
           exit $fail
 
@@ -298,7 +310,7 @@ jobs:
             else { Write-Host "MISS $t"; $fail = 1 }
           }
           $prof = $PROFILE.CurrentUserAllHosts
-          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'lazy-starter-kit:main' -Quiet)) {
+          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'bss-ai-boilerplate:main' -Quiet)) {
             Write-Host "ok   profile block"
           } else { Write-Host "MISS profile block"; $fail = 1 }
           exit $fail
@@ -311,7 +323,7 @@ jobs:
         shell: pwsh
         run: |
           $prof = $PROFILE.CurrentUserAllHosts
-          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'lazy-starter-kit' -Quiet)) {
+          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'bss-ai-boilerplate' -Quiet)) {
             Write-Host "STILL profile block"; exit 1
           }
           Write-Host "ok   profile block removed"

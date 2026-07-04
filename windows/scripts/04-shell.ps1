@@ -72,7 +72,8 @@ function Step-Shell {
   if (Test-Path $blockFile) {
     $content = [System.IO.File]::ReadAllText($blockFile)
     foreach ($profilePath in (Get-AllHostsProfilePaths)) {
-      Update-ManagedBlock -Path $profilePath -Tag 'lazy-starter-kit:main' -Content $content
+      Remove-ManagedBlock -Path $profilePath -Tag 'lazy-starter-kit:main'
+      Update-ManagedBlock -Path $profilePath -Tag 'bss-ai-boilerplate:main' -Content $content
     }
   } else {
     Write-Warn "profile block file missing: $blockFile"

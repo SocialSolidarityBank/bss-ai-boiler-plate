@@ -65,13 +65,16 @@ step_shell() {
     _clone_plugin zsh-syntax-highlighting https://github.com/zsh-users/zsh-syntax-highlighting
   fi
 
+  remove_block "$HOME/.zshrc" "lazy-starter-kit:main"
+  remove_block "$HOME/.zshrc" "lazy-starter-kit:ohmyzsh"
+
   # --- ensure oh-my-zsh is sourced (only if user isn't already doing it) -
   # Guard on the framework actually being present: injecting the source line
   # when the install failed would error on every new shell startup.
   if [[ "$DRY_RUN" == "1" ]]; then
-    info "[dry-run] would ensure oh-my-zsh is sourced in ~/.zshrc (lazy-starter-kit:ohmyzsh block)"
+    info "[dry-run] would ensure oh-my-zsh is sourced in ~/.zshrc (bss-ai-boilerplate:ohmyzsh block)"
   elif [[ -d "$OMZ_DIR" ]] && ! grep -qs 'oh-my-zsh.sh' "$HOME/.zshrc" 2>/dev/null; then
-    inject_block "$HOME/.zshrc" "lazy-starter-kit:ohmyzsh" <<'EOF'
+    inject_block "$HOME/.zshrc" "bss-ai-boilerplate:ohmyzsh" <<'EOF'
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME=""            # prompt handled by starship below
 plugins=(git npm node)
@@ -81,9 +84,9 @@ EOF
 
   # --- our zsh config block (mise, fzf, bat, cargo, bun, starship) -------
   if [[ "$DRY_RUN" == "1" ]]; then
-    info "[dry-run] inject 'lazy-starter-kit:main' block into ~/.zshrc"
+    info "[dry-run] inject 'bss-ai-boilerplate:main' block into ~/.zshrc"
   else
-    inject_block "$HOME/.zshrc" "lazy-starter-kit:main" < "$ROOT/config/zshrc.block.sh"
+    inject_block "$HOME/.zshrc" "bss-ai-boilerplate:main" < "$ROOT/config/zshrc.block.sh"
   fi
 
   # --- starship preset (don't clobber a user's existing one) -------------

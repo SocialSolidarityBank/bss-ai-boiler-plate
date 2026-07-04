@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>lazy-starter-kit — 설치 흐름</title>
+<title>BSS AI Helper — 설치 흐름</title>
 <style>
   :root {
     --bg: #0c0e14;
@@ -116,16 +116,23 @@
 <div class="wrap">
 
   <header>
-    <div class="badge">macOS · Apple Silicon · MIT</div>
-    <h1>lazy-starter-kit</h1>
-    <p class="tag">새 맥북을 <b>아무것도 없는 상태</b>에서 명령어 한 줄로 완전한 개발 환경까지.</p>
-    <p class="chain">node &rarr; runtimes &rarr; shell &rarr; docker &rarr; <b>gajae-code</b> + <b>lazycodex</b></p>
+    <div class="badge">macOS · Linux · Windows · MIT</div>
+    <h1>BSS AI Helper</h1>
+    <p class="tag">먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.</p>
+    <p class="chain">clone &rarr; <b>codex</b> &rarr; <b>BSS AI Helper 실행해줘</b> &rarr; status/report/manual</p>
     <div class="cmd">
       <span class="pmt">$</span>
-      <code id="curl">curl -fsSL https://raw.githubusercontent.com/Heoooooon/lazy-starter-kit/main/install.sh | bash</code>
+      <code id="curl">git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper && cd ~/bss-ai-helper && codex</code>
       <button onclick="copyCmd(this)">복사</button>
     </div>
   </header>
+
+  <div class="sec-title">처음 시작하기</div>
+  <div class="props">
+    <div class="prop"><b>Codex에서 시작</b><p>Codex가 열리면 <code>BSS AI Helper 실행해줘</code>라고 말합니다.</p></div>
+    <div class="prop"><b>승인 후 설치</b><p>설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다.</p></div>
+    <div class="prop"><b>다시 시작</b><p>터미널에서는 <code>bss-ai-helper</code>, <code>ai-helper</code>, <code>bss-ai</code>를 사용할 수 있습니다.</p></div>
+  </div>
 
   <div class="sec-title">설치 순서 — 7단계 (의존성 순서대로)</div>
 
@@ -208,6 +215,8 @@
 
   <div class="sec-title">실행 옵션</div>
   <div class="flags">
+    <div class="flag"><code>--status</code><span>저장된 진행 상태만 읽기 전용으로 확인</span></div>
+    <div class="flag"><code>--classic</code><span>개발자와 CI용 기존 단계형 설치 실행</span></div>
     <div class="flag"><code>--dry-run</code><span>아무것도 바꾸지 않고 무엇을 할지만 출력</span></div>
     <div class="flag"><code>--yes</code><span>비대화형 — 기본값으로 자동 진행</span></div>
     <div class="flag"><code>--only a,b</code><span>지정한 단계만 실행</span></div>
@@ -238,7 +247,8 @@
   </div>
 
   <footer>
-    <p><a href="https://github.com/Heoooooon/lazy-starter-kit">github.com/Heoooooon/lazy-starter-kit</a> · MIT License</p>
+    <p><a href="https://github.com/socialsolidaritybank/bss-ai-helper">github.com/socialsolidaritybank/bss-ai-helper</a> · MIT License</p>
+    <p>원본: <a href="https://github.com/foxion37/lazy-starter-kit">foxion37/lazy-starter-kit</a>에서 포크해 시작했습니다.</p>
   </footer>
 
 </div>

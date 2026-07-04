@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# lazy-starter-kit — install a complete macOS dev environment from scratch.
+# bss-ai-boilerplate — install the BSS macOS development environment.
 # From nothing → Xcode CLT, Homebrew, runtimes, shell, Docker, AI agents
 # (gajae-code + lazycodex).
 #
 # Usage:
 #   ./install.sh [options]
-#   curl -fsSL https://raw.githubusercontent.com/Heoooooon/lazy-starter-kit/main/install.sh | bash
+#   BSS_BOILERPLATE_REPO=<repo-url> ./install.sh
 #
 # Options:
 #   --dry-run        Show what would happen, change nothing.
@@ -14,6 +14,10 @@
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
+#   --status         Show saved BSS AI Helper progress and exit.
+#   --reset-state    Ask before deleting saved resume state.
+#   --classic        Run the classic step installer.
+#   --wizard         Reserved for the question wizard lanes.
 #   --list           List step ids and exit.
 #   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
@@ -22,9 +26,9 @@
 #
 set -euo pipefail
 
-REPO_URL="${STARTER_KIT_REPO:-https://github.com/Heoooooon/lazy-starter-kit.git}"
-REPO_BRANCH="${STARTER_KIT_BRANCH:-main}"
-CLONE_DIR="${STARTER_KIT_DIR:-$HOME/.lazy-starter-kit}"
+REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-helper.git}}"
+REPO_BRANCH="${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}"
+CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-helper}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root, or bootstrap by cloning (supports curl | bash).
@@ -38,7 +42,7 @@ resolve_root() {
     fi
   fi
   # Running piped from curl: clone (or update) and hand off.
-  echo "==> Bootstrapping lazy-starter-kit into $CLONE_DIR" >&2
+  echo "==> Bootstrapping bss-ai-boilerplate into $CLONE_DIR" >&2
   if ! command -v git >/dev/null 2>&1; then
     echo "==> git not found; triggering Xcode Command Line Tools install…" >&2
     xcode-select --install 2>/dev/null || true
@@ -66,6 +70,7 @@ fi
 
 # shellcheck source=scripts/lib.sh
 source "$ROOT/scripts/lib.sh"
+source "$ROOT/lib/wizard.sh"
 
 KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
 
@@ -97,18 +102,22 @@ usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$ROOT/inst
 # ---------------------------------------------------------------------------
 # Arg parsing
 # ---------------------------------------------------------------------------
-ONLY=""; SKIP=""
+ONLY=""; SKIP=""; STATUS=0; RESET_STATE=0; WIZARD=0; CLASSIC=0; DIRECT_MODE=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)   export DRY_RUN=1 ;;
-    -y|--yes)    export ASSUME_YES=1 ;;
-    --only)      ONLY="${2:-}"; shift ;;
-    --only=*)    ONLY="${1#*=}" ;;
-    --skip)      SKIP="${2:-}"; shift ;;
-    --skip=*)    SKIP="${1#*=}" ;;
-    --no-agents) SKIP="${SKIP:+$SKIP,}agents" ;;
+    -y|--yes)    export ASSUME_YES=1; DIRECT_MODE=1 ;;
+    --status)    STATUS=1 ;;
+    --reset-state) RESET_STATE=1 ;;
+    --classic)   CLASSIC=1; DIRECT_MODE=1 ;;
+    --wizard)    WIZARD=1 ;;
+    --only)      ONLY="${2:-}"; shift; DIRECT_MODE=1 ;;
+    --only=*)    ONLY="${1#*=}"; DIRECT_MODE=1 ;;
+    --skip)      SKIP="${2:-}"; shift; DIRECT_MODE=1 ;;
+    --skip=*)    SKIP="${1#*=}"; DIRECT_MODE=1 ;;
+    --no-agents) SKIP="${SKIP:+$SKIP,}agents"; DIRECT_MODE=1 ;;
     --list)      printf '%s\n' "${STEP_IDS[@]}"; exit 0 ;;
-    -V|--version) echo "lazy-starter-kit $KIT_VERSION"; exit 0 ;;
+    -V|--version) echo "bss-ai-boilerplate $KIT_VERSION"; exit 0 ;;
     -h|--help)   usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -132,6 +141,23 @@ _validate_ids() {
 [[ -n "$ONLY" ]] && _validate_ids "$ONLY"
 [[ -n "$SKIP" ]] && _validate_ids "$SKIP"
 
+if [[ "$STATUS" == "1" ]]; then
+  bss_show_status
+  exit 0
+fi
+if [[ "$RESET_STATE" == "1" ]]; then
+  bss_reset_state
+  exit 0
+fi
+if [[ "$WIZARD" == "1" || ( "$CLASSIC" != "1" && "$DIRECT_MODE" != "1" && -t 0 ) ]]; then
+  if run_wizard macos; then
+    exit 0
+  else
+    wizard_code=$?
+    [[ "$wizard_code" == 2 ]] || exit "$wizard_code"
+  fi
+fi
+
 # Build the active step list honouring --only / --skip
 selected() {
   local id keep
@@ -153,7 +179,7 @@ is_macos || die "This kit targets macOS only."
 is_arm   || warn "Not Apple Silicon (arm64) — proceeding, but only tested on M-series."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== lazy-starter-kit v$KIT_VERSION ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== bss-ai-boilerplate v$KIT_VERSION ==$_C_RESET"
 info "steps: $(selected | tr '\n' ' ')"
 
 # ---------------------------------------------------------------------------
