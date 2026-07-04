@@ -119,7 +119,7 @@
     <div class="badge">macOS · Linux · Windows · MIT</div>
     <h1>BSS AI Helper</h1>
     <p class="tag">먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.</p>
-    <p class="chain">clone &rarr; <b>codex</b> &rarr; <b>BSS AI Helper 실행해줘</b> &rarr; status/report/manual</p>
+    <p class="chain">clone &rarr; <b>codex</b> &rarr; <b>BSS AI Helper 실행해줘</b> &rarr; wizard/classic/status</p>
     <div class="cmd">
       <span class="pmt">$</span>
       <code id="curl">git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper && cd ~/bss-ai-helper && codex</code>
@@ -134,7 +134,14 @@
     <div class="prop"><b>다시 시작</b><p>터미널에서는 <code>bss-ai-helper</code>, <code>ai-helper</code>, <code>bss-ai</code>를 사용할 수 있습니다.</p></div>
   </div>
 
-  <div class="sec-title">설치 순서 — 7단계 (의존성 순서대로)</div>
+  <div class="sec-title">플랫폼별 실행 계약</div>
+  <div class="props">
+    <div class="prop"><b>macOS</b><p><code>./install.sh --status</code>, <code>--classic</code>, <code>--wizard</code>, <code>--dry-run</code>. 터미널 실행은 direct 모드가 없으면 질문형 wizard로 시작하고, 리디렉션 입력은 classic 단계 설치로 갑니다.</p></div>
+    <div class="prop"><b>Linux</b><p><code>./linux/install.sh --wizard</code>는 pipe 입력이면 <code>/dev/tty</code>를 찾고, 터미널이 없으면 classic으로 돌아갑니다. Docker는 <code>--with-docker</code>로 명시 허용합니다.</p></div>
+    <div class="prop"><b>Windows</b><p><code>.\windows\install.ps1 -Status</code>, <code>-Classic</code>, <code>-Wizard</code>. 입력이 리디렉션되면 자동 wizard 대신 classic 경로를 알립니다.</p></div>
+  </div>
+
+  <div class="sec-title">macOS 설치 순서 — 9단계 (root install.sh)</div>
 
   <div class="timeline">
 
@@ -201,13 +208,33 @@
       </div>
     </div>
 
-    <div class="step final">
+    <div class="step">
       <div class="num">7</div>
       <div class="card">
-        <h3><span class="id">agents</span> AI 코딩 에이전트 — 최종 단계</h3>
+        <h3><span class="id">agents</span> AI 코딩 에이전트</h3>
         <p>체인의 정점. node/bun 위에 AI 에이전트를 얹습니다. <b>gajae-code</b>는 bun 전역, <b>codex</b>는 npm 전역, <b>lazycodex</b>는 npx로 codex 위에 OmO 하니스를, <b>Hermes Agent</b>(Nous Research)는 공식 설치 스크립트로 (<code>HERMES=0</code>으로 스킵 가능).</p>
         <p class="needs">↳ 필요: runtimes (node/npm), brew (bun)</p>
         <div class="tools"><span>gajae-code (gjc)</span><span>codex</span><span>lazycodex (OmO)</span><span>Hermes Agent</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">8</div>
+      <div class="card">
+        <h3><span class="id">resume</span> 다시 시작 표면</h3>
+        <p><code>bss-ai-helper</code>, <code>ai-helper</code>, <code>bss-ai</code>로 이어서 실행할 수 있는 helper 명령을 준비합니다.</p>
+        <p class="needs">↳ 필요: agents 이후 상태 기록</p>
+        <div class="tools"><span>bss-ai-helper</span><span>ai-helper</span><span>bss-ai</span></div>
+      </div>
+    </div>
+
+    <div class="step final">
+      <div class="num">9</div>
+      <div class="card">
+        <h3><span class="id">report</span> 마무리 리포트</h3>
+        <p>저장된 설치 상태를 바탕으로 <code>latest-report.md</code>와 HTML manual 기록을 만듭니다. <code>--status</code>는 이 기록을 바꾸지 않습니다.</p>
+        <p class="needs">↳ 필요: helper state</p>
+        <div class="tools"><span>latest-report.md</span><span>manual/index.html</span><span>history.jsonl</span></div>
       </div>
     </div>
 
@@ -217,8 +244,10 @@
   <div class="flags">
     <div class="flag"><code>--status</code><span>저장된 진행 상태만 읽기 전용으로 확인</span></div>
     <div class="flag"><code>--classic</code><span>개발자와 CI용 기존 단계형 설치 실행</span></div>
+    <div class="flag"><code>--wizard / -Wizard</code><span>질문형 설치 실행. Linux는 pipe 입력이면 /dev/tty를 사용</span></div>
     <div class="flag"><code>--dry-run</code><span>아무것도 바꾸지 않고 무엇을 할지만 출력</span></div>
     <div class="flag"><code>--yes</code><span>비대화형 — 기본값으로 자동 진행</span></div>
+    <div class="flag"><code>--with-docker</code><span>Linux --yes 실행에서 Docker 설치를 명시적으로 허용</span></div>
     <div class="flag"><code>--only a,b</code><span>지정한 단계만 실행</span></div>
     <div class="flag"><code>--skip a,b</code><span>지정한 단계만 건너뜀</span></div>
     <div class="flag"><code>--no-agents</code><span>agents 단계 제외</span></div>
@@ -230,6 +259,7 @@
     <div class="prop"><b>멱등성</b><p>몇 번을 돌려도 안전. 설정 파일은 마커 블록으로 교체되어 중복·손상이 없습니다.</p></div>
     <div class="prop"><b>bash 3.2 호환</b><p>맥 기본 셸로 동작. 갓 산 맥에서 추가 설치 없이 바로 실행됩니다.</p></div>
     <div class="prop"><b>비파괴적</b><p>기존 파일·설정은 보존. 빈 값만 채우고, 사용자 것은 덮어쓰지 않습니다.</p></div>
+    <div class="prop"><b>마커 호환성</b><p>profile 블록은 현재도 <code>bss-ai-boilerplate:*</code> 마커를 씁니다. 설치된 마커를 이름 변경하지 않습니다.</p></div>
   </div>
 
   <div class="sec-title">권한 (sudo)</div>
@@ -248,7 +278,7 @@
 
   <footer>
     <p><a href="https://github.com/socialsolidaritybank/bss-ai-helper">github.com/socialsolidaritybank/bss-ai-helper</a> · MIT License</p>
-    <p>원본: <a href="https://github.com/foxion37/lazy-starter-kit">foxion37/lazy-starter-kit</a>에서 포크해 시작했습니다.</p>
+    <p>원본 출처와 upstream README 스냅샷은 저장소 루트의 NOTICE와 README.upstream 파일에 보관되어 있습니다.</p>
   </footer>
 
 </div>

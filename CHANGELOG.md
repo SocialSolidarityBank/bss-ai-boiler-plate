@@ -1,11 +1,18 @@
 # Changelog
 
-All notable changes to **lazy-starter-kit** are documented here.
+All notable changes to **BSS AI Helper** are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+### Changed
+- Documented the current cross-platform installer contract: wizard vs. classic
+  behavior, redirected input handling, status commands, Docker explicit opt-in,
+  and the `bss-ai-boilerplate:*` compatibility marker.
+- Updated release-readiness docs and checks to point at
+  `socialsolidaritybank/bss-ai-helper` instead of stale fork/release URLs.
 
 ## [0.3.0] - 2026-07-03
 
@@ -72,14 +79,13 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
   breakage on Arch).
 
 ### Fixed
-- **Rename** `macos-starter-kit` → `lazy-starter-kit` across code, URLs, managed-
-  block tags, and clone dir; installs/uninstalls migrate legacy `macos-starter-kit:*`
-  blocks so re-runs stay duplicate-free.
+- **Historical upstream rename**: legacy pre-BSS code, URLs, managed-block tags,
+  and clone dirs were migrated so re-runs stay duplicate-free.
 - `set -e` bug: `load_local_bins` aborted the Linux install when the mise shims
   dir did not exist yet.
 - **Config safety (all OSes)**: managed-block editing now refuses to touch a file
   with an unmatched `>>>`/`<<<` marker (previously everything below a lone marker
-  could be deleted) and makes a one-time `<file>.lazy-starter-kit.bak` backup
+  could be deleted) and makes a one-time `<file>.bss-ai-boilerplate.bak` backup
   before the first edit of an existing file.
 - **Windows / PowerShell 5.1**: native commands with `2>$null` no longer kill the
   installer under `$ErrorActionPreference='Stop'` (e.g. `gh auth status` when not
@@ -145,7 +151,7 @@ and on every push via GitHub Actions.
 - dry-run: `brew`/`runtimes` steps degrade gracefully on a bare machine instead
   of aborting when prerequisite tools aren't installed yet.
 
-[Unreleased]: https://github.com/Heoooooon/lazy-starter-kit/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/Heoooooon/lazy-starter-kit/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/Heoooooon/lazy-starter-kit/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Heoooooon/lazy-starter-kit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/socialsolidaritybank/bss-ai-helper/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/socialsolidaritybank/bss-ai-helper/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/socialsolidaritybank/bss-ai-helper/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/socialsolidaritybank/bss-ai-helper/releases/tag/v0.1.0
