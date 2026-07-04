@@ -2,7 +2,7 @@
 
 이 저장소에서 사용자가 `BSS AI Helper 실행해줘`, `AI 세팅 이어서 해줘`, `개발환경 설치 도와줘`라고 말하면 먼저 현재 상태를 확인한다.
 
-기본 흐름은 `git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper`, `cd ~/bss-ai-helper`, `codex`입니다. Codex가 열리면 사용자는 `BSS AI Helper 실행해줘`라고 말합니다.
+기본 흐름은 `git clone https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git ~/bss-ai-boiler-plate`, `cd ~/bss-ai-boiler-plate`, `codex`입니다. Codex가 열리면 사용자는 `BSS AI Helper 실행해줘`라고 말합니다.
 
 작업을 이어갈 때는 `./install.sh --status`로 상태를 먼저 보여준다. Windows에서는 `.\windows\install.ps1 -Status`를 쓴다.
 

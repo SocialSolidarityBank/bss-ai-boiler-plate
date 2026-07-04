@@ -41,7 +41,7 @@ set +e
   assert_contains "$install" '\[switch\]\$Status'
   assert_contains "$install" '\[switch\]\$Classic'
   assert_contains "$install" '\[switch\]\$Wizard'
-  assert_contains "$install" 'https://github.com/socialsolidaritybank/bss-ai-helper.git'
+  assert_contains "$install" 'https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git'
   assert_fixed "$install" "\$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume', 'report')"
   assert_fixed "$install" 'if ($List)'
   assert_fixed "$install" 'Write-Output $_'
@@ -92,7 +92,7 @@ set +e
   assert_contains "$docker_step" 'NEVER install Docker'
   assert_contains "$docker_step" 'not installed non-interactively'
 
-  assert_contains "$readme" 'irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-helper/main/windows/install.ps1 \| iex'
+  assert_contains "$readme" 'irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-boiler-plate/main/windows/install.ps1 \| iex'
   assert_contains "$readme" 'PowerShell'
   assert_contains "$readme" 'winget'
   assert_contains "$readme" 'bss-ai-boilerplate:main'

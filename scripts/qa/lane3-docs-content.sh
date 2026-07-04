@@ -11,11 +11,11 @@ combined="$(cat "${docs[@]}")"
 case "$mode" in
   first-run)
     {
-      assert_contains "$combined" 'socialsolidaritybank/bss-ai-helper'
+      assert_contains "$combined" 'socialsolidaritybank/bss-ai-boiler-plate'
       assert_contains "$combined" 'BSS AI Helper 실행해줘'
       assert_contains "$combined" 'codex'
-      assert_contains "$combined" '~/bss-ai-helper'
-      assert_contains "$combined" 'socialsolidaritybank/bss-ai-helper'
+      assert_contains "$combined" '~/bss-ai-boiler-plate'
+      assert_contains "$combined" 'bss-ai-helper'
       printf 'docs first-run content present\n'
     } > "$evidence" 2>&1 || { cat "$evidence" >&2; exit 1; }
     note "PASS G011-FIRST-RUN $evidence"
@@ -30,8 +30,9 @@ case "$mode" in
     if grep -R "Docker.*기본.*설치" "${docs[@]}" >> "$evidence" 2>&1; then
       fail "docs imply Docker is part of the non-developer default; see $evidence"
     fi
-    if grep -RIE "Heoooooon|lazy-starter-kit" "${docs[@]}" >> "$evidence" 2>&1; then
-      fail "docs contain stale public release references; see $evidence"
+    assert_contains "$combined" 'github.com/Heoooooon/lazy-starter-kit'
+    if grep -RIE "foxion37/lazy-starter-kit" "${docs[@]}" >> "$evidence" 2>&1; then
+      fail "docs contain stale upstream attribution; see $evidence"
     fi
     note "PASS G011-NONDEV $evidence"
     ;;

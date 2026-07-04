@@ -26,9 +26,9 @@
 #
 set -euo pipefail
 
-REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-helper.git}}"
+REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git}}"
 REPO_BRANCH="${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}"
-CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-helper}}"
+CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-boiler-plate}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root, or bootstrap by cloning (supports curl | bash).

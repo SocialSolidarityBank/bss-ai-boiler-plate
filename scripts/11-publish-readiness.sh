@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_REPO="socialsolidaritybank/bss-ai-boiler-plate"
 TARGET_URL="https://github.com/${TARGET_REPO}"
 TARGET_GIT="${TARGET_URL}.git"
-INSTALLER_DEFAULT_GIT="https://github.com/socialsolidaritybank/bss-ai-helper.git"
+INSTALLER_DEFAULT_GIT="https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git"
 PUBLIC_RELEASE_DOCS=(
   README.md
   linux/README.md
@@ -27,7 +27,7 @@ check_readiness() {
   local stale_status="not checked"
   local marker_status="not checked"
   local remote_status="not checked - blocked until BSS_PUBLISH_READINESS_REMOTE_CHECK=1 confirms read-only access"
-  if grep -RIE 'Heoooooon|lazy-starter-kit|github\.com/[^[:space:])"]+/lazy-starter-kit' "${PUBLIC_RELEASE_DOCS[@]/#/$ROOT/}" >/dev/null 2>&1; then
+  if grep -RIE 'foxion37/lazy-starter-kit|github\.com/foxion37/lazy-starter-kit' "${PUBLIC_RELEASE_DOCS[@]/#/$ROOT/}" >/dev/null 2>&1; then
     stale_status="found stale public release references"
   else
     stale_status="none"
@@ -59,7 +59,7 @@ BSS AI Helper publish readiness
 
 Target repository: ${TARGET_URL}
 Target clone URL: ${TARGET_GIT}
-Installer default clone URL: ${INSTALLER_DEFAULT_GIT} (unchanged until the requested target is accessible and approved)
+Installer default clone URL: ${INSTALLER_DEFAULT_GIT}
 Current origin: ${current:-none}
 Target remote accessibility: ${remote_status}
 Stale public release references: ${stale_status}
@@ -69,7 +69,7 @@ Read-only status:
 - commit/push/create commands were not run.
 - gh repo create, gh repo edit, git remote set-url, and git push are intentionally out of scope for this lane.
 - If current origin is not ${TARGET_GIT}, publish remains pending and must be approved by the parent/user.
-- If target remote accessibility is blocked, stop and report the requested ${TARGET_GIT} target as inaccessible; do not repoint the installer default clone URL.
+- If target remote accessibility is blocked, stop and report the requested ${TARGET_GIT} target as inaccessible before changing any other release setting.
 - This check does not migrate installed profile markers.
 
 Prepared commands for the approved publish step:

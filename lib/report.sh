@@ -75,8 +75,8 @@ report_lines = [
     "먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.",
     "",
     "```sh",
-    "git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper",
-    "cd ~/bss-ai-helper",
+    "git clone https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git ~/bss-ai-boiler-plate",
+    "cd ~/bss-ai-boiler-plate",
     "codex",
     "```",
     "",
@@ -117,8 +117,8 @@ details {{ border: 1px solid #d8dde6; border-radius: 8px; padding: 12px 14px; ba
 <body>
 <h1>BSS AI Helper 사용 설명서</h1>
 <p>처음 시작하기: 먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.</p>
-<pre><code>git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper
-cd ~/bss-ai-helper
+<pre><code>git clone https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git ~/bss-ai-boiler-plate
+cd ~/bss-ai-boiler-plate
 codex</code></pre>
 <p>Codex가 열리면 <code>BSS AI Helper 실행해줘</code>라고 말합니다. 설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다.</p>
 <section>

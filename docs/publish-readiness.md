@@ -4,12 +4,11 @@ Target repository: `https://github.com/socialsolidaritybank/bss-ai-boiler-plate`
 
 Target clone URL: `https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git`
 
-Installer default clone URL: `https://github.com/socialsolidaritybank/bss-ai-helper.git`
+Installer default clone URL: `https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git`
 
-The requested delivery target is `bss-ai-boiler-plate`. The installer default
-clone URL stays on the known working `bss-ai-helper` repository until the
-requested target is confirmed accessible and a parent/user explicitly approves
-the release switch.
+The requested delivery target is `bss-ai-boiler-plate`. The target repository
+has been confirmed accessible, made public, and approved as the installer
+default clone source.
 
 This lane prepares the repository for publication but does not commit, push, create a GitHub repository, edit visibility, or change `origin`.
 

@@ -12,7 +12,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
   behavior, redirected input handling, status commands, Docker explicit opt-in,
   and the `bss-ai-boilerplate:*` compatibility marker.
 - Updated release-readiness docs and checks to point at
-  `socialsolidaritybank/bss-ai-helper` instead of stale fork/release URLs.
+  `socialsolidaritybank/bss-ai-boiler-plate` instead of stale fork/release URLs.
 
 ## [0.3.0] - 2026-07-03
 
@@ -151,7 +151,7 @@ and on every push via GitHub Actions.
 - dry-run: `brew`/`runtimes` steps degrade gracefully on a bare machine instead
   of aborting when prerequisite tools aren't installed yet.
 
-[Unreleased]: https://github.com/socialsolidaritybank/bss-ai-helper/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/socialsolidaritybank/bss-ai-helper/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/socialsolidaritybank/bss-ai-helper/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/socialsolidaritybank/bss-ai-helper/releases/tag/v0.1.0
+[Unreleased]: https://github.com/socialsolidaritybank/bss-ai-boiler-plate/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/socialsolidaritybank/bss-ai-boiler-plate/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/socialsolidaritybank/bss-ai-boiler-plate/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/socialsolidaritybank/bss-ai-boiler-plate/releases/tag/v0.1.0

@@ -56,9 +56,9 @@ $ErrorActionPreference = 'Stop'
 $script:RunFromFile = [bool]$PSCommandPath
 
 $HomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
-$RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/bss-ai-helper.git' }
+$RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git' }
 $RepoBranch = if ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
-$CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-helper' }
+$CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-boiler-plate' }
 
 function Add-BootstrapPathEntry {
   param([string]$Path)

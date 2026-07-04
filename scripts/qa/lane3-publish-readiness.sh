@@ -15,7 +15,7 @@ case "$mode" in
     after="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
     [[ "$before" == "$after" ]] || fail "publish readiness mutated origin"
     assert_contains "$evidence" 'github.com/socialsolidaritybank/bss-ai-boiler-plate'
-    assert_contains "$evidence" 'Installer default clone URL: https://github.com/socialsolidaritybank/bss-ai-helper.git'
+    assert_contains "$evidence" 'Installer default clone URL: https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git'
     assert_contains "$evidence" 'Target remote accessibility: .*blocked|Target remote accessibility: .*not checked'
     assert_contains "$evidence" 'Stale public release references: none'
     assert_contains "$evidence" 'Profile marker compatibility: documented'
@@ -40,7 +40,7 @@ case "$mode" in
     } > "$evidence" 2>&1
     assert_contains "$evidence" 'socialsolidaritybank/bss-ai-boiler-plate'
     assert_contains "$evidence" 'origin was not changed|target remote already configured'
-    assert_not_contains "$evidence" 'Heoooooon|lazy-starter-kit'
+    assert_not_contains "$evidence" 'foxion37/lazy-starter-kit'
     assert_contains "$evidence" 'pending|보류|not changed|바꾸지 않았습니다'
     note "PASS G013-REMOTE $evidence"
     ;;
