@@ -12,9 +12,9 @@ _winget packages · runtimes · PowerShell profile · containers · and AI codin
 
 ## BSS AI Helper로 시작하기
 
-> 이 문서는 현재 BSS AI Helper Windows 설치 계약을 설명합니다. 원본 출처와 보관된 upstream README는 [`../NOTICE`](../NOTICE)와 저장소 루트의 upstream README 스냅샷에서 확인할 수 있습니다.
+> 이 문서는 Windows에서 BSS AI Helper가 어떻게 설치되는지 설명합니다. 원본 출처와 보관된 upstream README는 [`../NOTICE`](../NOTICE)와 저장소 루트의 upstream README 스냅샷에서 확인할 수 있습니다.
 
-먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.
+먼저 GitHub 저장소를 내려받고, 그 폴더에서 Codex를 실행합니다.
 
 ```powershell
 git clone https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git ~/bss-ai-boiler-plate
@@ -22,15 +22,15 @@ cd ~/bss-ai-boiler-plate
 codex
 ```
 
-Codex가 열리면 `BSS AI Helper 실행해줘`라고 말합니다. 설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다. 권한이 막히면 필요한 권한 설정 방법을 알려주고 다시 진행할 수 있습니다.
+Codex가 열리면 `BSS AI Helper 실행해줘`라고 말합니다. Codex는 설치 방법만 안내하고 끝내지 않습니다. 사용자가 승인하면 직접 설치를 진행하고, 권한 문제로 막히면 어떤 설정이 필요한지 알려준 뒤 다시 진행합니다.
 
-터미널에서는 `bss-ai-helper`, `ai-helper`, `bss-ai`를 사용할 수 있습니다. 개발자와 CI는 `-Status`, `-Classic`, `-DryRun`, `-List`를 계속 사용할 수 있습니다.
+설치가 끝나면 터미널에서 `bss-ai-helper`, `ai-helper`, `bss-ai`를 사용할 수 있습니다. 개발자와 CI는 `-Status`, `-Classic`, `-DryRun`, `-List`를 계속 사용할 수 있습니다.
 
-> **🇰🇷 한국어 빠른 시작** — 시작 버튼에서 `PowerShell`을 찾아 열고, 아래 한 줄을 붙여넣고 Enter:
+> **한국어 빠른 시작** — 시작 버튼에서 `PowerShell`을 찾아 열고, 아래 한 줄을 붙여넣은 뒤 Enter를 누르세요.
 > ```powershell
 > irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-boiler-plate/main/windows/install.ps1 | iex
 > ```
-> 끝나면 PowerShell을 새로 여세요. 막히면 앞에 `powershell -ExecutionPolicy Bypass -Command "..."`로 감싸 실행. (한국어 전체 안내: [저장소 메인 README](../README.md#-windows-설치-제일-자세히))
+> 끝나면 PowerShell을 새로 여세요. 실행이 막히면 앞에 `powershell -ExecutionPolicy Bypass -Command "..."`로 감싸 실행하면 됩니다. 한국어 전체 안내는 [저장소 메인 README](../README.md#처음-쓰는-분을-위한-안내)를 참고하세요.
 
 ## Quick start
 
@@ -94,14 +94,14 @@ prereqs  packages  runtimes  shell  docker  git  agents  resume  report
 .\install.ps1 -Version              # print the kit version
 ```
 
-`resume` installs the `bss-ai-helper` restart surface, and `report` writes the
-latest helper report/manual artifacts. They are part of `-List` and normal
-selection, but `-Status` remains read-only.
+`resume` installs the `bss-ai-helper` command you can use to continue later.
+`report` writes the latest helper report and manual files. They appear in
+`-List` and normal step selection, but `-Status` remains read-only.
 
 Every step is **idempotent** — safe to re-run. Your PowerShell profile
-(`$PROFILE.CurrentUserAllHosts`) is edited via a clearly marked managed block
-(`# >>> bss-ai-boilerplate:main >>>`) that gets replaced (never duplicated) on
-re-runs. Existing files you own are preserved.
+(`$PROFILE.CurrentUserAllHosts`) is edited only inside a clearly marked managed
+block (`# >>> bss-ai-boilerplate:main >>>`). On re-runs, that block is replaced,
+not duplicated. Existing files you own are preserved.
 
 `bss-ai-boilerplate:*` is the current internal marker for compatibility with
 installed profiles. The product name is BSS AI Helper, but this installer does

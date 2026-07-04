@@ -118,8 +118,8 @@
   <header>
     <div class="badge">macOS · Linux · Windows · MIT</div>
     <h1>BSS AI Helper</h1>
-    <p class="tag">먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.</p>
-    <p class="chain">clone &rarr; <b>codex</b> &rarr; <b>BSS AI Helper 실행해줘</b> &rarr; wizard/classic/status</p>
+    <p class="tag">먼저 GitHub 저장소를 내려받고, 그 폴더에서 Codex를 실행합니다.</p>
+    <p class="chain">저장소 받기 &rarr; <b>codex</b> &rarr; <b>BSS AI Helper 실행해줘</b> &rarr; 질문형 설치/상태 확인</p>
     <div class="cmd">
       <span class="pmt">$</span>
       <code id="curl">git clone https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git ~/bss-ai-boiler-plate && cd ~/bss-ai-boiler-plate && codex</code>
@@ -130,15 +130,15 @@
   <div class="sec-title">처음 시작하기</div>
   <div class="props">
     <div class="prop"><b>Codex에서 시작</b><p>Codex가 열리면 <code>BSS AI Helper 실행해줘</code>라고 말합니다.</p></div>
-    <div class="prop"><b>승인 후 설치</b><p>설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다.</p></div>
+    <div class="prop"><b>승인 후 설치</b><p>설치 방법만 안내하고 끝내지 않고, 사용자가 승인하면 직접 설치를 진행합니다.</p></div>
     <div class="prop"><b>다시 시작</b><p>터미널에서는 <code>bss-ai-helper</code>, <code>ai-helper</code>, <code>bss-ai</code>를 사용할 수 있습니다.</p></div>
   </div>
 
-  <div class="sec-title">플랫폼별 실행 계약</div>
+  <div class="sec-title">플랫폼별 실행 방식</div>
   <div class="props">
-    <div class="prop"><b>macOS</b><p><code>./install.sh --status</code>, <code>--classic</code>, <code>--wizard</code>, <code>--dry-run</code>. 터미널 실행은 direct 모드가 없으면 질문형 wizard로 시작하고, 리디렉션 입력은 classic 단계 설치로 갑니다.</p></div>
-    <div class="prop"><b>Linux</b><p><code>./linux/install.sh --wizard</code>는 pipe 입력이면 <code>/dev/tty</code>를 찾고, 터미널이 없으면 classic으로 돌아갑니다. Docker는 <code>--with-docker</code>로 명시 허용합니다.</p></div>
-    <div class="prop"><b>Windows</b><p><code>.\windows\install.ps1 -Status</code>, <code>-Classic</code>, <code>-Wizard</code>. 입력이 리디렉션되면 자동 wizard 대신 classic 경로를 알립니다.</p></div>
+    <div class="prop"><b>macOS</b><p><code>./install.sh --status</code>, <code>--classic</code>, <code>--wizard</code>, <code>--dry-run</code>. 터미널에서 실행하면 질문형 설치로 시작하고, 자동 실행 환경에서는 기본 단계형 설치로 전환합니다.</p></div>
+    <div class="prop"><b>Linux</b><p><code>./linux/install.sh --wizard</code>는 사용자가 답할 수 있는 터미널을 찾습니다. 답을 받을 터미널이 없으면 기본 단계형 설치로 돌아갑니다. Docker는 <code>--with-docker</code>로 직접 허용해야 합니다.</p></div>
+    <div class="prop"><b>Windows</b><p><code>.\windows\install.ps1 -Status</code>, <code>-Classic</code>, <code>-Wizard</code>. 답을 읽을 수 없는 실행 환경에서는 자동으로 답하지 않고, 기본 단계형 설치로 전환한다고 알려줍니다.</p></div>
   </div>
 
   <div class="sec-title">macOS 설치 순서 — 9단계 (root install.sh)</div>
