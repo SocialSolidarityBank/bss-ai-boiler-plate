@@ -57,6 +57,32 @@ function Test-IsAdmin {
   } catch { return $false }
 }
 
+function Get-WindowsAppsPath {
+  if ($env:LOCALAPPDATA) { return (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps') }
+  if ($env:USERPROFILE) { return (Join-Path $env:USERPROFILE 'AppData\Local\Microsoft\WindowsApps') }
+  return ''
+}
+
+function ConvertTo-ComparablePath {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) { return '' }
+  try {
+    return ([System.IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($Path))).TrimEnd('\').ToLowerInvariant()
+  } catch {
+    return $Path.TrimEnd('\').ToLowerInvariant()
+  }
+}
+
+function Test-PathContainsEntry {
+  param([string]$Needle)
+  $normalizedNeedle = ConvertTo-ComparablePath $Needle
+  if (-not $normalizedNeedle) { return $false }
+  foreach ($entry in ($env:Path -split ';')) {
+    if ((ConvertTo-ComparablePath $entry) -eq $normalizedNeedle) { return $true }
+  }
+  return $false
+}
+
 # ---------------------------------------------------------------------------
 # Command execution -- run, or just print under -DryRun
 # ---------------------------------------------------------------------------
@@ -128,6 +154,7 @@ function Confirm-Action {
 # current process won't see them until we re-read the environment.
 # ---------------------------------------------------------------------------
 function Update-SessionPath {
+  if ($env:BSS_AI_HELPER_DISABLE_PATH_REFRESH -eq '1') { return }
   # MERGE newly-installed tool dirs into the CURRENT process PATH -- do NOT rebuild
   # from Machine+User only. A rebuild drops process-level entries (VS dev shell,
   # portable git, dirs the profile prepended) and, with $ErrorActionPreference=
@@ -139,7 +166,9 @@ function Update-SessionPath {
   $user    = [Environment]::GetEnvironmentVariable('Path', 'User')
 
   $extra = @()
-  foreach ($p in @($machine, $user)) { if ($p) { $extra += ($p -split ';') } }
+  if ($env:BSS_AI_HELPER_SKIP_PERSISTENT_PATH -ne '1') {
+    foreach ($p in @($machine, $user)) { if ($p) { $extra += ($p -split ';') } }
+  }
   # user-local tool dirs (guard each base env var; may be unset off-Windows)
   if ($env:USERPROFILE) {
     $extra += (Join-Path $env:USERPROFILE '.cargo\bin')
@@ -147,6 +176,8 @@ function Update-SessionPath {
     # Claude Code (claude.exe) installs here via https://claude.ai/install.ps1
     $extra += (Join-Path $env:USERPROFILE '.local\bin')
   }
+  $windowsApps = Get-WindowsAppsPath
+  if ($windowsApps) { $extra += $windowsApps }
   if ($env:LOCALAPPDATA) { $extra += (Join-Path $env:LOCALAPPDATA 'mise\shims') }
   if ($env:APPDATA)      { $extra += (Join-Path $env:APPDATA 'npm') }
 
@@ -165,11 +196,88 @@ function Update-SessionPath {
 # ---------------------------------------------------------------------------
 # winget helpers
 # ---------------------------------------------------------------------------
+function Get-WingetStatus {
+  Update-SessionPath
+  $windowsApps = Get-WindowsAppsPath
+  $status = New-Object psobject -Property ([ordered]@{
+      Ready = $false
+      Found = $false
+      Source = ''
+      Version = ''
+      ExitCode = $null
+      Reason = 'not-found'
+      WindowsAppsPath = $windowsApps
+      WindowsAppsOnPath = (Test-PathContainsEntry $windowsApps)
+      AppInstallerState = 'unknown'
+    })
+
+  try {
+    $appInstaller = Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($appInstaller) {
+      $status.AppInstallerState = "registered $($appInstaller.Version)"
+    } else {
+      $status.AppInstallerState = 'not registered for this user'
+    }
+  } catch {
+    $status.AppInstallerState = "unknown ($($_.Exception.Message))"
+  }
+
+  $command = Get-Command winget -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $command) { return $status }
+
+  $status.Found = $true
+  $status.Source = if ($command.Source) { $command.Source } elseif ($command.Path) { $command.Path } else { 'winget' }
+  $status.Reason = 'probe-failed'
+  $versionLines = @(Invoke-NativeSilently $status.Source @('--version') | Out-String -Stream)
+  $status.ExitCode = $LASTEXITCODE
+  $version = ($versionLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1)
+  if (($status.ExitCode -eq 0) -and $version) {
+    $status.Ready = $true
+    $status.Version = $version.Trim()
+    $status.Reason = 'ready'
+  }
+  return $status
+}
+
+function Write-WingetDiagnostics {
+  param([Parameter(Mandatory)]$Status)
+  if ($Status.Found) {
+    Write-Warn "winget command is present but not working."
+    Write-Info "winget path: $($Status.Source)"
+    if ($null -ne $Status.ExitCode) { Write-Info "winget --version exit code: $($Status.ExitCode)" }
+  } else {
+    Write-Warn "winget not found in this PowerShell session."
+  }
+  Write-Info "winget is delivered by App Installer (Microsoft.DesktopAppInstaller). Install or update App Installer from the Microsoft Store:"
+  Write-Info "  ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1"
+  Write-Info "App Installer registration: $($Status.AppInstallerState)"
+  if ($Status.WindowsAppsPath) {
+    Write-Info "WindowsApps PATH should include:"
+    Write-Info "  $($Status.WindowsAppsPath)"
+    if (-not $Status.WindowsAppsOnPath) {
+      Write-Info "Current session PATH is missing WindowsApps; open a new PowerShell or re-run after PATH refresh."
+    }
+  }
+}
+
+function Assert-WingetReady {
+  param([string]$Context = 'this step')
+  $status = Get-WingetStatus
+  if ($status.Ready) { return $status }
+  Write-WingetDiagnostics -Status $status
+  if (-not $script:DryRun) {
+    Stop-Kit "winget is required for $Context -- repair App Installer or WindowsApps PATH, then re-run."
+  }
+  return $status
+}
+
 function Test-WingetPackage {
   param([Parameter(Mandatory)][string]$Id)
+  $status = Get-WingetStatus
+  if (-not $status.Ready) { return $false }
   # Confirm BOTH the exit code AND that the id actually appears in the output:
   # some winget versions exit 0 even when nothing matched, so the match guards it.
-  $match = Invoke-NativeSilently 'winget' @('list', '--id', $Id, '-e', '--accept-source-agreements') | Out-String -Stream | Select-String -SimpleMatch $Id
+  $match = Invoke-NativeSilently $status.Source @('list', '--id', $Id, '-e', '--accept-source-agreements') | Out-String -Stream | Select-String -SimpleMatch $Id
   return (($LASTEXITCODE -eq 0) -and [bool]$match)
 }
 
@@ -192,6 +300,7 @@ function Install-WingetPackage {
     Write-Host ("  [dry-run] winget {0} [--scope user, then default]" -f ($wingetArgs -join ' ')) -ForegroundColor DarkGray
     return
   }
+  Assert-WingetReady -Context "installing $Name" | Out-Null
   # Prefer a per-user install (no admin/UAC). If the package has no user-scope
   # installer, retry at default scope (which may prompt for elevation).
   winget @wingetArgs --scope user
@@ -216,6 +325,7 @@ function Uninstall-WingetPackage {
     Write-Host ("  [dry-run] winget uninstall --id {0} -e --silent" -f $Id) -ForegroundColor DarkGray
     return
   }
+  Assert-WingetReady -Context "removing $Name" | Out-Null
   winget uninstall --id $Id -e --silent --disable-interactivity
   if ($LASTEXITCODE -eq 0) {
     Write-Ok "$Name removed"

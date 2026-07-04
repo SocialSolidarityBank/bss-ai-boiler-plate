@@ -17,16 +17,20 @@ function New-Sandbox {
     Home = Join-Path $root 'home'
     Helper = Join-Path $root 'helper'
     Bin = Join-Path $root 'bin'
+    LocalAppData = Join-Path $root 'home\AppData\Local'
+    WindowsApps = Join-Path $root 'home\AppData\Local\Microsoft\WindowsApps'
     CommandLog = Join-Path $root 'commands.log'
   }
-  New-Item -ItemType Directory -Force -Path $paths.Home, $paths.Helper, $paths.Bin | Out-Null
+  New-Item -ItemType Directory -Force -Path $paths.Home, $paths.Helper, $paths.Bin, $paths.WindowsApps | Out-Null
   $Cleanups.Add($root) | Out-Null
   return $paths
 }
 
 function Add-FakeCommand {
-  param([hashtable]$Sandbox, [string]$Name)
-  $path = Join-Path $Sandbox.Bin "$Name.cmd"
+  param([hashtable]$Sandbox, [string]$Name, [string]$Directory = $null)
+  if (-not $Directory) { $Directory = $Sandbox.Bin }
+  if (-not (Test-Path $Directory)) { New-Item -ItemType Directory -Force -Path $Directory | Out-Null }
+  $path = Join-Path $Directory "$Name.cmd"
   @(
     '@echo off',
     'echo %~n0 %*>>"%BSS_CONTRACT_COMMAND_LOG%"',
@@ -34,6 +38,17 @@ function Add-FakeCommand {
     'if "%~1"=="-v" (echo fake-version& exit /b 0)',
     'if "%~1"=="version" (echo fake-version& exit /b 0)',
     'exit /b 99'
+  ) | Set-Content -Path $path -Encoding ASCII
+}
+
+function Add-BrokenCommand {
+  param([hashtable]$Sandbox, [string]$Name)
+  $path = Join-Path $Sandbox.Bin "$Name.cmd"
+  @(
+    '@echo off',
+    'echo %~n0 %*>>"%BSS_CONTRACT_COMMAND_LOG%"',
+    'echo simulated broken command 1>&2',
+    'exit /b 42'
   ) | Set-Content -Path $path -Encoding ASCII
 }
 
@@ -75,6 +90,7 @@ function Invoke-Installer {
   $psi.EnvironmentVariables['BSS_AI_HELPER_HOME'] = $Sandbox.Helper
   $psi.EnvironmentVariables['USERPROFILE'] = $Sandbox.Home
   $psi.EnvironmentVariables['HOME'] = $Sandbox.Home
+  $psi.EnvironmentVariables['LOCALAPPDATA'] = $Sandbox.LocalAppData
   $psi.EnvironmentVariables['BSS_CONTRACT_COMMAND_LOG'] = $Sandbox.CommandLog
   $psi.EnvironmentVariables['Path'] = $Sandbox.Bin
   foreach ($key in $ExtraEnv.Keys) {
@@ -230,6 +246,29 @@ try {
   Assert-NotContains 'redirected stdin direct dry-run' $redirectedResult.Output 'BSS AI Helper' 'no implicit wizard prompt when stdin is redirected in direct mode'
   Assert-Contains 'redirected stdin direct dry-run' $redirectedResult.Output 'Input is redirected.*classic installer' 'clear noninteractive fallback explanation before classic work starts'
 
+  $wingetViaWindowsApps = New-Sandbox
+  Add-FakeCommand $wingetViaWindowsApps 'winget' $wingetViaWindowsApps.WindowsApps
+  $wingetViaWindowsAppsResult = Invoke-Installer -Arguments @('-Classic', '-DryRun', '-Only', 'prereqs') -Sandbox $wingetViaWindowsApps -ExtraEnv @{ BSS_AI_HELPER_SKIP_PERSISTENT_PATH = '1' }
+  Assert-Contract 'WindowsApps PATH refresh winget' ($wingetViaWindowsAppsResult.ExitCode -eq 0) 'exit 0 when winget is only in the user WindowsApps directory during dry-run' $wingetViaWindowsAppsResult.Output
+  Assert-Contains 'WindowsApps PATH refresh winget' $wingetViaWindowsAppsResult.Output 'winget present \(fake-version\)' 'current-session PATH refresh finds winget in WindowsApps'
+
+  $missingWinget = New-Sandbox
+  $missingWingetResult = Invoke-Installer -Arguments @('-Classic', '-DryRun', '-Only', 'prereqs') -Sandbox $missingWinget -ExtraEnv @{ BSS_AI_HELPER_DISABLE_PATH_REFRESH = '1' }
+  Assert-Contract 'missing winget diagnostics' ($missingWingetResult.ExitCode -eq 0) 'dry-run reports missing winget without failing' $missingWingetResult.Output
+  Assert-Contains 'missing winget diagnostics' $missingWingetResult.Output 'App Installer' 'actionable App Installer guidance'
+  Assert-Contains 'missing winget diagnostics' $missingWingetResult.Output 'WindowsApps' 'actionable WindowsApps PATH guidance'
+  Assert-NotContains 'missing winget diagnostics' $missingWingetResult.Output 'CommandNotFoundException|The term ''winget''' 'no raw command-not-found crash'
+
+  $brokenWinget = New-Sandbox
+  Add-BrokenCommand $brokenWinget 'winget'
+  $brokenWingetResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'prereqs') -Sandbox $brokenWinget
+  $brokenWingetLog = Read-CommandLog $brokenWinget
+  Assert-Contract 'broken winget diagnostics' ($brokenWingetResult.ExitCode -ne 0) 'non-zero exit when winget exists but cannot run' $brokenWingetResult.Output
+  Assert-Contains 'broken winget diagnostics' $brokenWingetResult.Output 'winget.*not working|App Installer' 'actionable broken winget/App Installer diagnostic'
+  Assert-Contains 'broken winget diagnostics' $brokenWingetResult.Output 'WindowsApps' 'WindowsApps PATH recovery hint'
+  Assert-Contract 'broken winget diagnostics' ([regex]::IsMatch($brokenWingetLog, '(?m)^winget --version')) 'only a bounded winget readiness probe executes' $brokenWingetLog
+  Assert-NotContains 'broken winget diagnostics' $brokenWingetResult.Output 'winget install' 'no package operation starts after a broken winget probe'
+
   $agents = New-Sandbox
   foreach ($name in @('bun', 'npm', 'npx', 'curl', 'mise', 'rustup', 'gjc', 'codex', 'claude')) {
     Add-FakeCommand $agents $name
@@ -246,7 +285,7 @@ try {
   Assert-Contains 'classic/direct dry-run agents' $agentsResult.Output 'steps: agents' 'classic/direct selected agents step'
   Assert-Contains 'classic/direct dry-run agents' $agentsResult.Output '\[dry-run\].*(npm install|Claude|npx)' 'observable dry-run agent install preview'
   Assert-Contract 'classic/direct dry-run agents' (-not [regex]::IsMatch($agentLog, '(?m)^(bun|npm|npx|curl|mise|rustup) ')) 'mocked install/network commands are not executed in dry-run' $agentLog
-  Note-Pending 'strict dry-run agents' (-not [regex]::IsMatch($agentLog, '(?m)^(gjc|codex|claude) ')) 'dry-run should avoid even agent version probes' $agentLog
+  Assert-Contract 'strict dry-run agents' (-not [regex]::IsMatch($agentLog, '(?m)^(gjc|codex|claude) ')) 'dry-run avoids even shadowed agent version probes' $agentLog
 
   $badStep = New-Sandbox
   $badResult = Invoke-Installer -Arguments @('-DryRun', '-Only', 'definitely-not-a-step') -Sandbox $badStep
