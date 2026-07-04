@@ -7,7 +7,7 @@ bss_show_status() {
   if [[ ! -f "$state" ]]; then
     printf 'BSS AI Helper 진행 상태\n'
     printf '진행 상태가 아직 없습니다.\n'
-    printf '처음 시작하려면 이 저장소에서 Codex를 열고 `BSS AI Helper 실행해줘`라고 말하세요.\n'
+    printf '처음 시작하려면 저장소에서 Codex를 열고 `BSS AI Helper 실행해줘`라고 말하세요.\n'
     return 0
   fi
 
@@ -19,6 +19,7 @@ bss_show_status() {
 
   python3 - "$state" <<'PY'
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -37,10 +38,23 @@ symbols = {
     "completed": "● 완료",
     "skipped": "△ 건너뜀",
     "failed": "× 실패",
-    "in_progress": "◐ 진행 중",
-    "running": "◐ 진행 중",
+    "in_progress": "… 진행 중",
+    "running": "… 진행 중",
     "pending": "○ 대기",
 }
+redaction_patterns = [
+    re.compile(r"(?i)\bAuthorization\s*:\s*Bearer\s+[\"']?[A-Za-z0-9._~+/\-=]+[\"']?"),
+    re.compile(r"(?i)\bBearer\s+[\"']?[A-Za-z0-9._~+/\-=]{4,}[\"']?"),
+    re.compile(r"(?i)\b(password|passcode|secret|credential|api[_-]?key|access[_-]?key|auth[_-]?code|oauth[_-]?code|token)\s*[:=]\s*\S+"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{8,}"),
+]
+
+def safe_text(value):
+    text = "" if value is None else str(value)
+    for pattern in redaction_patterns:
+        text = pattern.sub("[redacted]", text)
+    return text
 
 try:
     data = json.loads(state_path.read_text(encoding="utf-8"))
@@ -57,13 +71,14 @@ failed = []
 rows = []
 for key, fallback_label in order:
     raw = steps.get(key) or {}
-    status = str(raw.get("status", "pending"))
-    raw["label"] = fallback_label
+    status = safe_text(raw.get("status", "pending"))
+    label = safe_text(raw.get("label") or fallback_label)
+    reason = safe_text(raw.get("reason") or raw.get("note") or "")
     if status in {"complete", "completed", "skipped"}:
         progressed += 1
     if status == "failed":
-        failed.append((raw.get("label") or fallback_label, raw.get("reason") or "원인 미기록"))
-    rows.append((symbols.get(status, "○ 대기"), raw.get("label") or fallback_label, raw.get("reason") or ""))
+        failed.append((label, reason or "원인 미기록"))
+    rows.append((symbols.get(status, "○ 대기"), label, reason))
 
 print("BSS AI Helper 진행 상태")
 print(f"{progressed}/{len(order)} 진행됨")
@@ -90,7 +105,7 @@ bss_reset_state() {
     return 0
   fi
   if [[ "${BSS_AI_HELPER_FORCE_RESET:-0}" != "1" ]]; then
-    if ! confirm "저장된 진행 상태를 삭제할까요? 작업 기록과 리포트/HTML은 남깁니다."; then
+    if ! confirm "저장된 진행 상태를 삭제할까요? 작업 기록과 리포트, HTML은 남겨 둡니다."; then
       info "진행 상태를 그대로 둡니다."
       return 0
     fi

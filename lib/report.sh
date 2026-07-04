@@ -35,6 +35,8 @@ tools = data.get("tools") or []
 steps = data.get("steps") or {}
 phrases = data.get("restartPhrases") or ["BSS AI Helper 실행해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
 redaction_patterns = [
+    re.compile(r"(?i)\bAuthorization\s*:\s*Bearer\s+[\"']?[A-Za-z0-9._~+/\-=]+[\"']?"),
+    re.compile(r"(?i)\bBearer\s+[\"']?[A-Za-z0-9._~+/\-=]{4,}[\"']?"),
     re.compile(r"(?i)\b(password|passcode|secret|credential|api[_-]?key|access[_-]?key|auth[_-]?code|oauth[_-]?code|token)\s*[:=]\s*\S+"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{8,}"),

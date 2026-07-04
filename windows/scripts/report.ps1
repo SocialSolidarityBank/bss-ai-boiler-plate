@@ -8,6 +8,8 @@ function ConvertTo-ReportSafeText {
   param($Value)
   $text = if ($null -eq $Value) { '' } else { [string]$Value }
   $patterns = @(
+    '(?i)\bAuthorization\s*:\s*Bearer\s+["'']?[A-Za-z0-9._~+/\-=]+["'']?',
+    '(?i)\bBearer\s+["'']?[A-Za-z0-9._~+/\-=]{4,}["'']?',
     '(?i)\b(password|passcode|secret|credential|api[_-]?key|access[_-]?key|auth[_-]?code|oauth[_-]?code|token)\s*[:=]\s*\S+',
     '\bsk-[A-Za-z0-9_-]{8,}',
     '\bgh[pousr]_[A-Za-z0-9_]{8,}'
@@ -54,13 +56,13 @@ function New-HelperReport {
   $report = Join-Path $helperHome 'latest-report.md'
   $manual = Join-Path $helperHome 'manual\index.html'
   $history = Join-Path $helperHome 'history.jsonl'
-  $data = Get-Content $statePath -Raw | ConvertFrom-Json
+  $data = Read-HelperState
   $phrases = @('BSS AI Helper 실행해줘', 'AI 세팅 이어서 해줘', '개발환경 설치 도와줘')
   $statePhrases = Get-ReportProperty $data 'restartPhrases'
   if ($statePhrases) { $phrases = @($statePhrases) }
-  $tools = @($data.tools)
-  $installed = @($tools | Where-Object { $_.status -in @('installed','complete','completed') })
-  $notInstalled = @($tools | Where-Object { $_.status -notin @('installed','complete','completed') })
+  $tools = @((Get-ReportProperty $data 'tools'))
+  $installed = @($tools | Where-Object { (Get-ReportProperty $_ 'status') -in @('installed','complete','completed') })
+  $notInstalled = @($tools | Where-Object { (Get-ReportProperty $_ 'status') -notin @('installed','complete','completed') })
   if ($installed.Count -eq 0) { $installed = @([pscustomobject]@{ name='아직 설치 완료로 기록된 도구가 없습니다.'; status='pending' }) }
   if ($notInstalled.Count -eq 0) { $notInstalled = @([pscustomobject]@{ name='설치하지 않은 도구가 없습니다.'; status='none' }) }
   $lines = @('# BSS AI Helper 리포트', '', '## 처음 시작하기', 'Codex가 열리면 `BSS AI Helper 실행해줘`라고 말합니다.', '', '## 설치한 도구')

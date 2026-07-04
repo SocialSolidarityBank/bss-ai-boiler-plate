@@ -260,6 +260,39 @@ assert_contains "status-only" "$status_output" "BSS AI Helper" "status output"
 assert_not_contains "status-only" "$status_output" "bss-ai-boilerplate v" "no classic installer execution in status-only mode"
 assert_contract "status-only" "$([[ ! -f "$status_box/helper/state.json" ]]; echo $?)" "no state file written by status-only mode" "$status_output"
 
+secret_box="$(new_sandbox)"
+cat > "$secret_box/helper/state.json" <<'JSON'
+{
+  "version": 1,
+  "steps": {
+    "github": {
+      "status": "failed",
+      "label": "GitHub",
+      "reason": "Authorization: Bearer status-secret-12345",
+      "note": "Bearer note-secret-12345"
+    }
+  },
+  "tools": [
+    {
+      "name": "GitHub 연결",
+      "status": "failed",
+      "kind": "account",
+      "reason": "Authorization: Bearer report-secret-12345",
+      "nextAction": "retry with Bearer next-secret-12345"
+    }
+  ]
+}
+JSON
+secret_status_output="$(run_posix_helper "$secret_box" "$ROOT/install.sh" --status)"
+secret_status_code="$(exit_code_of "$secret_box")"
+assert_contract "bearer redaction status" "$([[ "$secret_status_code" == "0" ]]; echo $?)" "status exits 0 with bearer-like notes" "$secret_status_output"
+assert_not_contains "bearer redaction status" "$secret_status_output" "Authorization[[:space:]]*:[[:space:]]*Bearer|Bearer[[:space:]]+(status|note)-secret" "status output redacts auth headers and bearer tokens"
+secret_report_output="$(run_posix_helper "$secret_box" "$ROOT/scripts/10-report.sh" --generate)"
+secret_report_code="$(exit_code_of "$secret_box")"
+assert_contract "bearer redaction report" "$([[ "$secret_report_code" == "0" ]]; echo $?)" "report exits 0 with bearer-like tool reasons" "$secret_report_output"
+secret_report_text="$(cat "$secret_box/helper/latest-report.md" "$secret_box/helper/manual/index.html" 2>/dev/null || true)"
+assert_not_contains "bearer redaction report" "$secret_report_text" "Authorization[[:space:]]*:[[:space:]]*Bearer|Bearer[[:space:]]+(report|next)-secret" "report/manual redacts auth headers and bearer tokens"
+
 wizard_box="$(new_sandbox)"
 printf '1\n' > "$wizard_box/tty"
 BSS_AI_HELPER_TTY="$wizard_box/tty"

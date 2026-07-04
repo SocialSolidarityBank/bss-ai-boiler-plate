@@ -71,6 +71,7 @@ function Add-BootstrapPathEntry {
 }
 
 function Update-BootstrapSessionPath {
+  if ($env:BSS_AI_HELPER_DISABLE_PATH_REFRESH -eq '1') { return }
   foreach ($scope in @('Machine', 'User')) {
     $scopePath = [Environment]::GetEnvironmentVariable('Path', $scope)
     if ($scopePath) {
@@ -92,13 +93,10 @@ function Resolve-Root {
   Write-Host "==> Bootstrapping bss-ai-boilerplate into $CloneDir" -ForegroundColor Blue
   Update-BootstrapSessionPath
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    # A piped one-liner (irm | iex) needs git to clone the kit. On a fresh
-    # machine, install it via winget, then refresh PATH for this session.
     $wingetCommand = Get-Command winget -ErrorAction SilentlyContinue
     if ($wingetCommand) {
-      Write-Host "==> git not found - installing via winget..." -ForegroundColor Blue
-      & $wingetCommand.Source install --id Git.Git -e --accept-package-agreements --accept-source-agreements --silent --disable-interactivity
-      Update-BootstrapSessionPath
+      Write-Host "==> git not found. Install Git first, then re-run this command:" -ForegroundColor Red
+      Write-Host "    winget install --id Git.Git -e" -ForegroundColor Red
     } else {
       Write-Host "==> winget not found. Install or repair App Installer, and make sure WindowsApps is on PATH:" -ForegroundColor Red
       Write-Host "    ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1" -ForegroundColor Red

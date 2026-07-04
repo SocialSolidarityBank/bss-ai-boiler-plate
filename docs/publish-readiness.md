@@ -1,8 +1,15 @@
 # GitHub Publish Readiness
 
-Target repository: `https://github.com/socialsolidaritybank/bss-ai-helper`
+Target repository: `https://github.com/socialsolidaritybank/bss-ai-boiler-plate`
 
-Target clone URL: `https://github.com/socialsolidaritybank/bss-ai-helper.git`
+Target clone URL: `https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git`
+
+Installer default clone URL: `https://github.com/socialsolidaritybank/bss-ai-helper.git`
+
+The requested delivery target is `bss-ai-boiler-plate`. The installer default
+clone URL stays on the known working `bss-ai-helper` repository until the
+requested target is confirmed accessible and a parent/user explicitly approves
+the release switch.
 
 This lane prepares the repository for publication but does not commit, push, create a GitHub repository, edit visibility, or change `origin`.
 
@@ -21,11 +28,21 @@ Run this read-only check:
 ./scripts/11-publish-readiness.sh --check
 ```
 
+To perform the optional bounded read-only target check, run:
+
+```sh
+BSS_PUBLISH_READINESS_REMOTE_CHECK=1 ./scripts/11-publish-readiness.sh --check
+```
+
+If the check reports the target as blocked or inaccessible, stop and report that
+`https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git` cannot be used
+yet. Do not mutate `origin` or change installer defaults as a fallback.
+
 When the parent or user explicitly approves publishing, use the prepared sequence below after QA is green:
 
 ```sh
-gh repo view socialsolidaritybank/bss-ai-helper --json nameWithOwner,url,visibility,defaultBranchRef
-git remote set-url origin https://github.com/socialsolidaritybank/bss-ai-helper.git
+gh repo view socialsolidaritybank/bss-ai-boiler-plate --json nameWithOwner,url,visibility,defaultBranchRef
+git remote set-url origin https://github.com/socialsolidaritybank/bss-ai-boiler-plate.git
 git push -u origin main
 ```
 

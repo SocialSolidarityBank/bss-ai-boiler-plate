@@ -12,6 +12,22 @@ function New-HelperState {
   return @{ version = 1; steps = @{}; ai_services = @(); aiServices = @(); addons = @{}; tools = @() }
 }
 
+function ConvertTo-StatusSafeText {
+  param($Value)
+  $text = if ($null -eq $Value) { '' } else { [string]$Value }
+  $patterns = @(
+    '(?i)\bAuthorization\s*:\s*Bearer\s+["'']?[A-Za-z0-9._~+/\-=]+["'']?',
+    '(?i)\bBearer\s+["'']?[A-Za-z0-9._~+/\-=]{4,}["'']?',
+    '(?i)\b(password|passcode|secret|credential|api[_-]?key|access[_-]?key|auth[_-]?code|oauth[_-]?code|token)\s*[:=]\s*\S+',
+    '\bsk-[A-Za-z0-9_-]{8,}',
+    '\bgh[pousr]_[A-Za-z0-9_]{8,}'
+  )
+  foreach ($pattern in $patterns) {
+    $text = [regex]::Replace($text, $pattern, '[redacted]')
+  }
+  return $text
+}
+
 function ConvertTo-PlainObject {
   param($Value)
   if ($null -eq $Value) { return $null }
@@ -188,8 +204,8 @@ function Show-Status {
     $key = $item.key
     $row = $null
     if ($state['steps']) { $row = $state['steps'][$key] }
-    $status = if ($row) { $row['status'] } else { 'pending' }
-    $note = if ($row) { $row['note'] } else { '' }
+    $status = if ($row) { ConvertTo-StatusSafeText $row['status'] } else { 'pending' }
+    $note = if ($row) { ConvertTo-StatusSafeText $row['note'] } else { '' }
     $suffix = if ($note) { " - $note" } else { '' }
     $icon = if ($icons.ContainsKey($status)) { $icons[$status] } else { $status }
     Write-Output "$icon $($item.label)$suffix"

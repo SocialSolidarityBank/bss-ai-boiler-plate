@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 mode="${1:-target}"
 evidence="$EVIDENCE_DIR/g013-publish-readiness-${mode}.txt"
 
-secret_regex='(ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|oauth[_-]?code[=:][A-Za-z0-9_-]+|password[=:][^[:space:]]+)'
+secret_regex='(Authorization[[:space:]]*:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._~+/\=-]+|Bearer[[:space:]]+[A-Za-z0-9._~+/\=-]{4,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|oauth[_-]?code[=:][A-Za-z0-9_-]+|password[=:][^[:space:]]+)'
 
 case "$mode" in
   target)
@@ -14,7 +14,9 @@ case "$mode" in
     run_and_capture "$evidence" "$ROOT/scripts/11-publish-readiness.sh" --check || fail "publish readiness check failed; see $evidence"
     after="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
     [[ "$before" == "$after" ]] || fail "publish readiness mutated origin"
-    assert_contains "$evidence" 'github.com/socialsolidaritybank/bss-ai-helper'
+    assert_contains "$evidence" 'github.com/socialsolidaritybank/bss-ai-boiler-plate'
+    assert_contains "$evidence" 'Installer default clone URL: https://github.com/socialsolidaritybank/bss-ai-helper.git'
+    assert_contains "$evidence" 'Target remote accessibility: .*blocked|Target remote accessibility: .*not checked'
     assert_contains "$evidence" 'Stale public release references: none'
     assert_contains "$evidence" 'Profile marker compatibility: documented'
     assert_contains "$evidence" 'commit/push/create'
@@ -36,7 +38,8 @@ case "$mode" in
       printf 'current origin: %s\n' "$current"
       "$ROOT/scripts/11-publish-readiness.sh" --check
     } > "$evidence" 2>&1
-    assert_contains "$evidence" 'socialsolidaritybank/bss-ai-helper'
+    assert_contains "$evidence" 'socialsolidaritybank/bss-ai-boiler-plate'
+    assert_contains "$evidence" 'origin was not changed|target remote already configured'
     assert_not_contains "$evidence" 'Heoooooon|lazy-starter-kit'
     assert_contains "$evidence" 'pending|보류|not changed|바꾸지 않았습니다'
     note "PASS G013-REMOTE $evidence"

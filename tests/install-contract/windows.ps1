@@ -121,6 +121,55 @@ function Invoke-Installer {
   }
 }
 
+function Invoke-BootstrapCopy {
+  param(
+    [hashtable]$Sandbox,
+    [hashtable]$ExtraEnv = @{},
+    [int]$TimeoutSeconds = 20
+  )
+
+  $copy = Join-Path $Sandbox.Root 'remote-install.ps1'
+  Copy-Item -LiteralPath $Installer -Destination $copy -Force
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = Get-PowerShellExe
+  $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$copy`" -Status"
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+  $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
+  $psi.EnvironmentVariables['BSS_AI_HELPER_HOME'] = $Sandbox.Helper
+  $psi.EnvironmentVariables['USERPROFILE'] = $Sandbox.Home
+  $psi.EnvironmentVariables['HOME'] = $Sandbox.Home
+  $psi.EnvironmentVariables['LOCALAPPDATA'] = $Sandbox.LocalAppData
+  $psi.EnvironmentVariables['BSS_CONTRACT_COMMAND_LOG'] = $Sandbox.CommandLog
+  $psi.EnvironmentVariables['Path'] = $Sandbox.Bin
+  $psi.EnvironmentVariables['BSS_AI_HELPER_DISABLE_PATH_REFRESH'] = '1'
+  foreach ($key in $ExtraEnv.Keys) {
+    $psi.EnvironmentVariables[$key] = [string]$ExtraEnv[$key]
+  }
+
+  $process = New-Object System.Diagnostics.Process
+  $process.StartInfo = $psi
+  [void]$process.Start()
+  if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+    try { $process.Kill() } catch {}
+    return @{
+      ExitCode = 124
+      Output = "TIMEOUT after ${TimeoutSeconds}s"
+      TimedOut = $true
+    }
+  }
+
+  $stdout = $process.StandardOutput.ReadToEnd()
+  $stderr = $process.StandardError.ReadToEnd()
+  return @{
+    ExitCode = $process.ExitCode
+    Output = ($stdout + $stderr)
+    TimedOut = $false
+  }
+}
+
 function Invoke-GeneratedHelper {
   param(
     [string[]]$Arguments,
@@ -257,6 +306,36 @@ try {
   Assert-Contract 'fresh-state report' (Test-Path (Join-Path $freshReport.Helper 'latest-report.md')) 'latest-report.md is generated from a fresh helper state' $freshReportResult.Output
   Assert-Contract 'fresh-state report' (Test-Path (Join-Path $freshReport.Helper 'manual\index.html')) 'manual/index.html is generated from a fresh helper state' $freshReportResult.Output
 
+  $oldStateReport = New-Sandbox
+  @{
+    version = 1
+    steps = @{
+      report = @{ status = 'pending'; note = 'legacy state without tools' }
+    }
+  } | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 (Join-Path $oldStateReport.Helper 'state.json')
+  $oldStateReportResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'report') -Sandbox $oldStateReport
+  Assert-Contract 'old-state report compatibility' ($oldStateReportResult.ExitCode -eq 0) 'exit 0 for report generation from legacy state without tools' $oldStateReportResult.Output
+  Assert-Contract 'old-state report compatibility' (Test-Path (Join-Path $oldStateReport.Helper 'latest-report.md')) 'latest-report.md is generated from legacy state without tools' $oldStateReportResult.Output
+
+  $secretState = New-Sandbox
+  @{
+    version = 1
+    steps = @{
+      github = @{ status = 'failed'; note = 'Authorization: Bearer status-secret-12345'; reason = 'Bearer reason-secret-12345' }
+    }
+    tools = @(
+      @{ name = 'GitHub 연결'; status = 'failed'; kind = 'account'; reason = 'Authorization: Bearer report-secret-12345'; nextAction = 'retry with Bearer next-secret-12345' }
+    )
+  } | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $secretState.Helper 'state.json')
+  $secretStatusResult = Invoke-Installer -Arguments @('-Status') -Sandbox $secretState
+  Assert-Contract 'bearer redaction status' ($secretStatusResult.ExitCode -eq 0) 'status exits 0 with bearer-like notes' $secretStatusResult.Output
+  Assert-NotContains 'bearer redaction status' $secretStatusResult.Output 'Authorization\s*:\s*Bearer|Bearer\s+(status|reason)-secret' 'status output redacts auth headers and bearer tokens'
+  $secretReportResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'report') -Sandbox $secretState
+  $secretReport = if (Test-Path (Join-Path $secretState.Helper 'latest-report.md')) { Get-Content (Join-Path $secretState.Helper 'latest-report.md') -Raw } else { '' }
+  $secretManual = if (Test-Path (Join-Path $secretState.Helper 'manual\index.html')) { Get-Content (Join-Path $secretState.Helper 'manual\index.html') -Raw } else { '' }
+  Assert-Contract 'bearer redaction report' ($secretReportResult.ExitCode -eq 0) 'report exits 0 with bearer-like tool reasons' $secretReportResult.Output
+  Assert-NotContains 'bearer redaction report' ($secretReport + $secretManual) 'Authorization\s*:\s*Bearer|Bearer\s+(report|next)-secret' 'report/manual redacts auth headers and bearer tokens'
+
   $resumeReportStatus = New-Sandbox
   $resumeReportResult = Invoke-Installer -Arguments @('-Classic', '-Only', 'resume,report') -Sandbox $resumeReportStatus
   Assert-Contract 'resume-report status read' ($resumeReportResult.ExitCode -eq 0) 'exit 0 for isolated resume/report generation' $resumeReportResult.Output
@@ -359,6 +438,14 @@ try {
   Assert-Contains 'missing winget diagnostics' $missingWingetResult.Output 'App Installer' 'actionable App Installer guidance'
   Assert-Contains 'missing winget diagnostics' $missingWingetResult.Output 'WindowsApps' 'actionable WindowsApps PATH guidance'
   Assert-NotContains 'missing winget diagnostics' $missingWingetResult.Output 'CommandNotFoundException|The term ''winget''' 'no raw command-not-found crash'
+
+  $bootstrapNoGit = New-Sandbox
+  Add-FakeCommand $bootstrapNoGit 'winget'
+  $bootstrapNoGitResult = Invoke-BootstrapCopy -Sandbox $bootstrapNoGit
+  $bootstrapNoGitLog = Read-CommandLog $bootstrapNoGit
+  Assert-Contract 'bootstrap missing git consent' ($bootstrapNoGitResult.ExitCode -ne 0) 'bootstrap exits non-zero when Git is missing' $bootstrapNoGitResult.Output
+  Assert-Contains 'bootstrap missing git consent' $bootstrapNoGitResult.Output 'git not found|Git first|winget install --id Git\.Git' 'clear Git installation instructions'
+  Assert-NotContains 'bootstrap missing git consent' $bootstrapNoGitLog 'winget install|--silent|--disable-interactivity' 'bootstrap does not silently install Git through winget'
 
   $brokenWinget = New-Sandbox
   Add-BrokenCommand $brokenWinget 'winget'
