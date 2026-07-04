@@ -25,6 +25,7 @@ bss_generate_report() {
 import datetime as dt
 import html
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -33,12 +34,23 @@ data = json.loads(state_path.read_text(encoding="utf-8"))
 tools = data.get("tools") or []
 steps = data.get("steps") or {}
 phrases = data.get("restartPhrases") or ["BSS AI Helper 실행해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
+redaction_patterns = [
+    re.compile(r"(?i)\b(password|passcode|secret|credential|api[_-]?key|access[_-]?key|auth[_-]?code|oauth[_-]?code|token)\s*[:=]\s*\S+"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{8,}"),
+]
+
+def safe_text(value):
+    text = "" if value is None else str(value)
+    for pattern in redaction_patterns:
+        text = pattern.sub("[redacted]", text)
+    return text
 
 def label_tool(tool):
-    name = tool.get("name", "이름 없는 도구")
-    status = tool.get("status", "unknown")
-    reason = tool.get("reason") or ""
-    next_action = tool.get("nextAction") or ""
+    name = safe_text(tool.get("name", "이름 없는 도구"))
+    status = safe_text(tool.get("status", "unknown"))
+    reason = safe_text(tool.get("reason") or "")
+    next_action = safe_text(tool.get("nextAction") or "")
     detail = " / ".join(x for x in [reason, next_action] if x)
     if detail:
         return f"- {name}: {status} - {detail}"
@@ -75,7 +87,7 @@ report_lines = [
     *[label_tool(t) for t in not_installed],
     "",
     "## 다시 시작하기",
-    *[f"- `{p}`" for p in phrases],
+    *[f"- `{safe_text(p)}`" for p in phrases],
     "",
     "터미널에서는 `bss-ai-helper`, `ai-helper`, `bss-ai`를 사용할 수 있습니다.",
 ]
@@ -122,7 +134,7 @@ codex</code></pre>
 <section>
 <h2>다시 시작하기</h2>
 <ul>
-{''.join(f'<li><code>{html.escape(p)}</code></li>' for p in phrases)}
+{''.join(f'<li><code>{html.escape(safe_text(p))}</code></li>' for p in phrases)}
 </ul>
 </section>
 <section>

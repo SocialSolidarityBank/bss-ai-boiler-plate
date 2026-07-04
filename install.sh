@@ -22,7 +22,7 @@
 #   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
 #
-# Steps (in order): prereqs brew runtimes shell docker git agents resume
+# Steps (in order): prereqs brew runtimes shell docker git agents resume report
 #
 set -euo pipefail
 
@@ -78,7 +78,7 @@ KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
 # Step registry
 # ---------------------------------------------------------------------------
 # Note: kept bash-3.2 compatible (macOS ships bash 3.2) — no associative arrays.
-STEP_IDS=(prereqs brew runtimes shell docker git agents resume)
+STEP_IDS=(prereqs brew runtimes shell docker git agents resume report)
 
 # step_file <id> -> the scripts/NN-*.sh filename for that step
 step_file() {
@@ -91,6 +91,7 @@ step_file() {
     git)      echo 06-git.sh ;;
     agents)   echo 07-agents.sh ;;
     resume)   echo 09-codex-resume.sh ;;
+    report)   echo 10-report.sh ;;
     *) return 1 ;;
   esac
 }

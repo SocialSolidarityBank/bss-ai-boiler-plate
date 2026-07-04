@@ -29,6 +29,7 @@ order = [
     ("github", "GitHub 연결"),
     ("ai-tools", "AI 도구 선택"),
     ("addons", "추가 도구 추천"),
+    ("resume", "다시 시작 표면"),
     ("report", "마무리 리포트"),
 ]
 symbols = {
@@ -57,6 +58,7 @@ rows = []
 for key, fallback_label in order:
     raw = steps.get(key) or {}
     status = str(raw.get("status", "pending"))
+    raw["label"] = fallback_label
     if status in {"complete", "completed", "skipped"}:
         progressed += 1
     if status == "failed":

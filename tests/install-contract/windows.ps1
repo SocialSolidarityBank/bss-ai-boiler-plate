@@ -242,6 +242,7 @@ try {
   $listResult = Invoke-Installer -Arguments @('-List') -Sandbox $list
   Assert-Contract 'step list' ($listResult.ExitCode -eq 0) 'exit 0 for -List' $listResult.Output
   Assert-Contains 'step list' $listResult.Output '\bresume\b' 'Windows installer exposes the resume step'
+  Assert-Contains 'step list' $listResult.Output '\breport\b' 'Windows installer exposes the report step'
 
   $status = New-Sandbox
   $statusResult = Invoke-Installer -Arguments @('-Status') -Sandbox $status

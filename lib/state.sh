@@ -101,6 +101,7 @@ labels = {
     "github": "GitHub 연결",
     "ai-tools": "AI 도구 선택",
     "addons": "추가 도구 추천",
+    "resume": "다시 시작 표면",
     "report": "마무리 리포트",
 }
 

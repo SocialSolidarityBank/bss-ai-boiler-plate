@@ -247,8 +247,10 @@ check_shell_syntax
 
 root_list="$("$ROOT/install.sh" --list)"
 assert_contains "root step list" "$root_list" "^resume$" "root installer exposes the resume step"
+assert_contains "root step list" "$root_list" "^report$" "root installer exposes the report step"
 linux_list="$("$ROOT/linux/install.sh" --list)"
 assert_contains "linux step list" "$linux_list" "^resume$" "Linux installer exposes the resume step"
+assert_contains "linux step list" "$linux_list" "^report$" "Linux installer exposes the report step"
 
 status_box="$(new_sandbox)"
 status_output="$(run_installer "$status_box" "" --status)"

@@ -23,7 +23,7 @@
 #   --version, -V    Print the kit version and exit.
 #   --help, -h       Show this help.
 #
-# Steps (in order): prereqs packages runtimes shell docker git agents resume
+# Steps (in order): prereqs packages runtimes shell docker git agents resume report
 #
 # Supported package managers: apt · dnf/yum · pacman · zypper (glibc distros).
 # Alpine/musl (apk) is not supported (upstream node/ast-grep/bun lack musl builds).
@@ -79,7 +79,7 @@ KIT_VERSION="$(cat "$ROOT/../VERSION" 2>/dev/null || echo dev)"
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
-STEP_IDS=(prereqs packages runtimes shell docker git agents resume)
+STEP_IDS=(prereqs packages runtimes shell docker git agents resume report)
 
 # step_file <id> -> the scripts/NN-*.sh filename for that step
 step_file() {
@@ -92,6 +92,7 @@ step_file() {
     git)      echo 06-git.sh ;;
     agents)   echo 07-agents.sh ;;
     resume)   echo 09-codex-resume.sh ;;
+    report)   echo ../../scripts/10-report.sh ;;
     *) return 1 ;;
   esac
 }

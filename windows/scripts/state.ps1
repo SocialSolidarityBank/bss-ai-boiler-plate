@@ -159,7 +159,9 @@ function Show-Status {
     @{ key = 'shell'; label = '터미널 편의 설정' },
     @{ key = 'github'; label = 'GitHub 연결' },
     @{ key = 'ai-tools'; label = 'AI 도구 선택' },
-    @{ key = 'addons'; label = '추가 도구 추천' }
+    @{ key = 'addons'; label = '추가 도구 추천' },
+    @{ key = 'resume'; label = '다시 시작 표면' },
+    @{ key = 'report'; label = '마무리 리포트' }
   )
   $icons = @{
     complete = '● 완료'
