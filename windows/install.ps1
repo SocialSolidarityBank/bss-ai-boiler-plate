@@ -160,12 +160,19 @@ if ($ResetState) {
   if ($script:RunFromFile) { exit 0 } else { return }
 }
 $directMode = [bool]($Classic -or $Yes -or $Only.Count -gt 0 -or $Skip.Count -gt 0 -or $NoAgents)
-if (($Wizard -or ((-not $directMode) -and (-not [Console]::IsInputRedirected))) -and -not $Classic)  {
+$inputRedirected = [Console]::IsInputRedirected
+if ($inputRedirected -and -not $Wizard -and -not $Classic) {
+  Write-Warn "Input is redirected, so the question wizard is not started automatically. Running the classic installer; use -Wizard from an interactive console or -Status for a read-only check."
+}
+if (($Wizard -or ((-not $directMode) -and (-not $inputRedirected))) -and -not $Classic)  {
   if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
   . (Join-Path $Root 'scripts\recommendations.ps1')
   . (Join-Path $Root 'scripts\wizard.ps1')
+  $script:WizardRequestedClassic = $false
   Start-Wizard -Platform 'Windows' -Root $Root
-  if ($script:RunFromFile) { exit 0 } else { return }
+  if (-not $script:WizardRequestedClassic) {
+    if ($script:RunFromFile) { exit 0 } else { return }
+  }
 }
 
 if ($NoAgents) { $Skip = @($Skip) + 'agents' }

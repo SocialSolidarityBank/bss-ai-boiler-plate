@@ -175,10 +175,10 @@ try {
   Assert-Contract 'explicit wizard' ($wizardResult.ExitCode -eq 0) 'exit 0 when redirected input chooses status' $wizardResult.Output
   Assert-Contains 'explicit wizard' $wizardResult.Output 'BSS AI Helper' 'wizard prompt title'
   Assert-Contains 'explicit wizard' $wizardResult.Output '1\)' 'status menu choice'
-  Assert-Contains 'explicit wizard' $wizardResult.Output '4\)' 'exit menu choice'
+  Assert-Contains 'explicit wizard' $wizardResult.Output '4\).*\(classic\)' 'classic/direct menu choice'
+  Assert-Contains 'explicit wizard' $wizardResult.Output '5\)' 'exit menu choice'
   Assert-NotContains 'explicit wizard' $wizardResult.Output 'bss-ai-boilerplate v' 'wizard should not enter classic installer for status choice'
   Assert-Contract 'explicit wizard' (Test-Path (Join-Path $wizard.Helper 'state.json')) 'isolated helper state is created only under the sandbox' $wizardResult.Output
-  Note-Pending 'explicit wizard classic option' $false 'wizard menu exposes a classic/direct mode choice' $wizardResult.Output
 
   $wizardDryRun = New-Sandbox
   $wizardDryRunResult = Invoke-Installer -Arguments @('-Wizard', '-DryRun') -InputText "1`n" -Sandbox $wizardDryRun
@@ -187,6 +187,37 @@ try {
   Assert-Contains 'explicit wizard dry-run' $wizardDryRunResult.Output 'BSS AI Helper' 'wizard prompt title'
   Write-Output "CHARACTERIZE Windows explicit wizard dry-run: state_exists=$wizardDryRunState"
   Note-Pending 'explicit wizard dry-run state policy' (-not $wizardDryRunState) 'dry-run wizard avoids persistent state writes outside the sandbox' $wizardDryRunResult.Output
+
+  $wizardClassic = New-Sandbox
+  foreach ($name in @('bun', 'npm', 'npx', 'curl', 'mise', 'rustup', 'gjc', 'codex', 'claude')) {
+    Add-FakeCommand $wizardClassic $name
+  }
+  $wizardClassicEnv = @{
+    BSS_AI_INSTALL_CODEX = '1'
+    BSS_AI_INSTALL_CLAUDE = '1'
+    BSS_AI_INSTALL_EXTRAS = '1'
+    BSS_AI_HELPER_FORCE_INSTALL_PREVIEW = '1'
+  }
+  $wizardClassicResult = Invoke-Installer -Arguments @('-Wizard', '-DryRun', '-Only', 'agents') -InputText "4`n" -Sandbox $wizardClassic -ExtraEnv $wizardClassicEnv
+  Assert-Contract 'explicit wizard classic choice' ($wizardClassicResult.ExitCode -eq 0) 'exit 0 when wizard choice 4 falls through to classic mode' $wizardClassicResult.Output
+  Assert-Contains 'explicit wizard classic choice' $wizardClassicResult.Output 'steps: agents' 'classic/direct selected agents step after wizard choice 4'
+  Assert-Contains 'explicit wizard classic choice' $wizardClassicResult.Output 'DRY-RUN' 'classic dry-run notice after wizard choice 4'
+
+  $wizardInvalid = New-Sandbox
+  $wizardInvalidResult = Invoke-Installer -Arguments @('-Wizard') -InputText "not-a-choice`n" -Sandbox $wizardInvalid
+  Assert-Contract 'malformed wizard menu choice' ($wizardInvalidResult.ExitCode -eq 0) 'exit 0 and show status for an invalid wizard menu choice' $wizardInvalidResult.Output
+  Assert-Contains 'malformed wizard menu choice' $wizardInvalidResult.Output '0/5' 'status output after invalid wizard choice'
+  Assert-NotContains 'malformed wizard menu choice' $wizardInvalidResult.Output 'bss-ai-boilerplate v' 'invalid wizard choice should not enter classic installer'
+
+  $addonLongWork = New-Sandbox
+  $addonLongWorkResult = Invoke-Installer -Arguments @('-Wizard', '-DryRun') -InputText "3`n3`n1`n3`n2`n2`n" -Sandbox $addonLongWork
+  Assert-Contract 'addon long-work preference' ($addonLongWorkResult.ExitCode -eq 0) 'exit 0 when addon preference 3 is selected' $addonLongWorkResult.Output
+  Assert-Contains 'addon long-work preference' $addonLongWorkResult.Output 'Lazy-Codex' 'Codex long-work addon recommendation'
+
+  $addonAdvanced = New-Sandbox
+  $addonAdvancedResult = Invoke-Installer -Arguments @('-Wizard', '-DryRun') -InputText "3`n3`n4`n4`n2`n2`n" -Sandbox $addonAdvanced
+  Assert-Contract 'addon advanced preference' ($addonAdvancedResult.ExitCode -eq 0) 'exit 0 when addon preference 4 is selected' $addonAdvancedResult.Output
+  Assert-Contains 'addon advanced preference' $addonAdvancedResult.Output 'Gajae-Code' 'advanced addon recommendation'
 
   $redirected = New-Sandbox
   Add-FakeCommand $redirected 'winget'
@@ -197,7 +228,7 @@ try {
   Assert-Contains 'redirected stdin direct dry-run' $redirectedResult.Output 'DRY-RUN' 'dry-run notice'
   Assert-Contains 'redirected stdin direct dry-run' $redirectedResult.Output 'steps: prereqs' 'classic/direct selected step list'
   Assert-NotContains 'redirected stdin direct dry-run' $redirectedResult.Output 'BSS AI Helper' 'no implicit wizard prompt when stdin is redirected in direct mode'
-  Note-Pending 'redirected stdin no-flag explanation' $false 'no-flag redirected stdin should explain the noninteractive fallback before classic work starts' $redirectedResult.Output
+  Assert-Contains 'redirected stdin direct dry-run' $redirectedResult.Output 'Input is redirected.*classic installer' 'clear noninteractive fallback explanation before classic work starts'
 
   $agents = New-Sandbox
   foreach ($name in @('bun', 'npm', 'npx', 'curl', 'mise', 'rustup', 'gjc', 'codex', 'claude')) {

@@ -3,6 +3,10 @@
   if ($script:AssumeYes) { return $Default }
   if ([Console]::IsInputRedirected) {
     $line = [Console]::In.ReadLine()
+    if ($null -eq $line) {
+      Write-Warn 'No redirected wizard input was available; using the safe default choice.'
+      return $Default
+    }
     if ([string]::IsNullOrWhiteSpace($line)) { return $Default }
     return $line
   }
@@ -33,29 +37,36 @@ function Invoke-WizardRecovery {
 
 function Start-Wizard {
   param([string]$Platform = 'Windows', [string]$Root)
+  $script:WizardRequestedClassic = $false
   Initialize-HelperState
   Write-Step 'BSS AI Helper 질문형 설치'
   Write-Info '한 번에 전부 설치하지 않고 필요한 항목을 질문으로 확인합니다.'
   Write-Output '1) 상태만 보기'
   Write-Output '2) 1단계 기본 설치 준비'
   Write-Output '3) GitHub, AI 도구, 추가 도구 설정'
-  Write-Output '4) 종료'
+  Write-Output '4) 기존 설치 방식으로 실행 (classic)'
+  Write-Output '5) 종료'
   $choice = Read-WizardChoice -Prompt '선택:' -Default '1'
-  switch ($choice) {
-    '1' { Show-Status }
-    '2' {
-      Invoke-BaseStep -Platform $Platform -Root $Root
-      Invoke-GithubStep
-      Invoke-AiToolsStep -Root $Root
-      Invoke-AddonsStep
-      Write-Ok "질문형 설치를 마쳤습니다. 상태 파일: $(Get-StatePath)"
-    }
-    '3' {
-      Invoke-GithubStep
-      Invoke-AiToolsStep -Root $Root
-      Invoke-AddonsStep
-      Write-Ok "질문형 설정을 마쳤습니다. 상태 파일: $(Get-StatePath)"
-    }
-    default { Write-Info '종료합니다.' }
+  if ($choice -eq '1') {
+    Show-Status
+  } elseif ($choice -eq '2') {
+    Invoke-BaseStep -Platform $Platform -Root $Root
+    Invoke-GithubStep
+    Invoke-AiToolsStep -Root $Root
+    Invoke-AddonsStep
+    Write-Ok "질문형 설치를 마쳤습니다. 상태 파일: $(Get-StatePath)"
+  } elseif ($choice -eq '3') {
+    Invoke-GithubStep
+    Invoke-AiToolsStep -Root $Root
+    Invoke-AddonsStep
+    Write-Ok "질문형 설정을 마쳤습니다. 상태 파일: $(Get-StatePath)"
+  } elseif (@('4', 'classic', '기존') -contains $choice) {
+    $script:WizardRequestedClassic = $true
+    Write-Info '기존 단계형 설치로 전환합니다.'
+  } elseif ($choice -eq '5') {
+    Write-Info '종료합니다.'
+  } else {
+    Write-Warn '알 수 없는 선택입니다. 상태만 표시합니다.'
+    Show-Status
   }
 }
