@@ -1,11 +1,37 @@
-# managed by bss-ai-boilerplate -- edits between the markers are overwritten on re-run.
+# managed by ai-boiler-plate -- edits between the markers are overwritten on re-run.
+
+# Refresh PATH from persisted Machine/User values. Installers such as winget can
+# update the persistent PATH while the parent app process still has an old copy.
+$PathParts = New-Object System.Collections.Generic.List[string]
+foreach ($sourcePath in @(
+  $env:Path,
+  [Environment]::GetEnvironmentVariable('Path', 'Machine'),
+  [Environment]::GetEnvironmentVariable('Path', 'User')
+)) {
+  if ([string]::IsNullOrWhiteSpace($sourcePath)) { continue }
+  foreach ($pathPart in ($sourcePath -split ';')) {
+    if (-not [string]::IsNullOrWhiteSpace($pathPart)) { $PathParts.Add($pathPart) }
+  }
+}
+$SeenPathParts = @{}
+$MergedPathParts = @()
+foreach ($pathPart in $PathParts) {
+  $normalizedPathPart = $pathPart.TrimEnd('\').ToLowerInvariant()
+  if ($SeenPathParts.ContainsKey($normalizedPathPart)) { continue }
+  $SeenPathParts[$normalizedPathPart] = $true
+  $MergedPathParts += $pathPart
+}
+if ($MergedPathParts.Count -gt 0) { $env:Path = $MergedPathParts -join ';' }
 
 # mise: node / python / go version manager
 if (Get-Command mise -ErrorAction SilentlyContinue) {
+  if ($PSVersionTable.PSVersion.Major -lt 7 -and -not $env:MISE_PWSH_CHPWD_WARNING) {
+    $env:MISE_PWSH_CHPWD_WARNING = '0'
+  }
   (& mise activate pwsh) -join "`n" | Invoke-Expression
 }
 
-# bun: global packages (e.g. gjc / gajae-code) live in ~/.bun/bin
+# bun: global packages live in ~/.bun/bin
 $env:BUN_INSTALL = Join-Path $env:USERPROFILE '.bun'
 if (Test-Path (Join-Path $env:BUN_INSTALL 'bin')) {
   $env:Path = (Join-Path $env:BUN_INSTALL 'bin') + ';' + $env:Path
@@ -23,13 +49,32 @@ if (Test-Path (Join-Path $env:USERPROFILE '.local\bin')) {
   $env:Path = (Join-Path $env:USERPROFILE '.local\bin') + ';' + $env:Path
 }
 
-$BssAiHelperBin = Join-Path $env:USERPROFILE '.bss-ai-helper\bin'
-if (Test-Path $BssAiHelperBin) {
-  $env:Path = $BssAiHelperBin + ';' + $env:Path
+$AiBoilerPlateHome = if ($env:AI_BOILER_PLATE_HOME) {
+  $env:AI_BOILER_PLATE_HOME
+} elseif ($env:BSS_AI_HELPER_HOME) {
+  $env:BSS_AI_HELPER_HOME
+} else {
+  Join-Path $env:USERPROFILE '.ai-boiler-plate'
 }
-function bss-ai-helper { & (Join-Path $env:USERPROFILE '.bss-ai-helper\bin\bss-ai-helper.ps1') @args }
-function ai-helper { bss-ai-helper @args }
-function bss-ai { bss-ai-helper @args }
+$LegacyBssAiHelperHome = if ($env:BSS_AI_HELPER_HOME) { $env:BSS_AI_HELPER_HOME } else { Join-Path $env:USERPROFILE '.bss-ai-helper' }
+if (-not (Test-Path (Join-Path $AiBoilerPlateHome 'bin')) -and (Test-Path (Join-Path $LegacyBssAiHelperHome 'bin'))) {
+  $AiBoilerPlateHome = $LegacyBssAiHelperHome
+}
+$AiBoilerPlateBin = Join-Path $AiBoilerPlateHome 'bin'
+if (Test-Path $AiBoilerPlateBin) {
+  $env:Path = $AiBoilerPlateBin + ';' + $env:Path
+}
+function ai-boiler-plate {
+  $preferred = Join-Path $AiBoilerPlateHome 'bin\ai-boiler-plate.ps1'
+  $legacy = Join-Path $AiBoilerPlateHome 'bin\bss-ai-helper.ps1'
+  if (Test-Path $preferred) { & $preferred @args }
+  elseif (Test-Path $legacy) { & $legacy @args }
+  else { Write-Error "ai-boiler-plate command not installed under $AiBoilerPlateBin" }
+}
+# Deprecated compatibility aliases for installed users; prefer ai-boiler-plate.
+function bss-ai-helper { ai-boiler-plate @args }
+function ai-helper { ai-boiler-plate @args }
+function bss-ai { ai-boiler-plate @args }
 
 # PSReadLine: zsh-autosuggestions-style inline prediction + completion menu.
 # (Syntax highlighting as you type is built into PSReadLine -- no config needed.)
@@ -50,8 +95,9 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
   Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward  -ErrorAction SilentlyContinue
 }
 
-# PSFzf: fuzzy finder keybindings (Ctrl-T files, Ctrl-R history) when installed
-if (Get-Module -ListAvailable -Name PSFzf) {
+# PSFzf: fuzzy finder keybindings (Ctrl-T files, Ctrl-R history) when installed.
+# The module throws during import when fzf.exe is not reachable, so check both.
+if ((Get-Module -ListAvailable -Name PSFzf) -and (Get-Command fzf -ErrorAction SilentlyContinue)) {
   Import-Module PSFzf -ErrorAction SilentlyContinue
   try { Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordReverseHistory 'Ctrl+r' -ErrorAction SilentlyContinue } catch {}
 }

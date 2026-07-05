@@ -24,7 +24,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: bash syntax (3.2-safe parse)
         run: |
-          for f in install.sh uninstall.sh lib/common.sh scripts/*.sh config/zshrc.block.sh; do
+          for f in install.sh linux/install.sh uninstall.sh linux/uninstall.sh lib/*.sh scripts/*.sh scripts/qa/*.sh config/zshrc.block.sh linux/config/zshrc.block.sh; do
             bash -n "$f"
           done
       - name: shellcheck
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: run lane 3 scripted QA
         env:
-          BSS_AI_HELPER_HOME: ${{ runner.temp }}/bss-ai-helper-home
+          AI_BOILER_PLATE_HOME: ${{ runner.temp }}/ai-boiler-plate-home
         run: |
           chmod +x scripts/qa/*.sh scripts/09-codex-resume.sh scripts/10-report.sh scripts/11-publish-readiness.sh
           scripts/qa/lane3-all.sh
@@ -84,16 +84,16 @@ jobs:
             mise which "$t" >/dev/null 2>&1 && echo "ok   mise:$t" || { echo "MISS mise:$t"; fail=1; }
           done
           command -v ast-grep >/dev/null 2>&1 && echo "ok   ast-grep" || { echo "MISS ast-grep"; fail=1; }
-          for t in gjc codex claude; do need "$t"; done
-          grep -q 'bss-ai-boilerplate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
+          for t in codex claude; do need "$t"; done
+          grep -q 'ai-boiler-plate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
           exit $fail
 
       - name: uninstall (teardown)
-        run: ./linux/uninstall.sh --yes --with-gajae --skip docker
+        run: ./linux/uninstall.sh --yes --skip docker
 
       - name: verify removed
         run: |
-          if grep -q 'bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then
+          if grep -Eq 'ai-boiler-plate|bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then
             echo "STILL zshrc block"; exit 1
           fi
           echo "ok   zshrc block removed"
@@ -169,16 +169,16 @@ jobs:
             mise which "$t" >/dev/null 2>&1 && echo "ok   mise:$t" || { echo "MISS mise:$t"; fail=1; }
           done
           command -v ast-grep >/dev/null 2>&1 && echo "ok   ast-grep" || { echo "MISS ast-grep"; fail=1; }
-          for t in gjc codex claude; do need "$t"; done
-          grep -q 'bss-ai-boilerplate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
+          for t in codex claude; do need "$t"; done
+          grep -q 'ai-boiler-plate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
           exit $fail
 
       - name: uninstall (teardown)
-        run: ./linux/uninstall.sh --yes --with-gajae --skip docker
+        run: ./linux/uninstall.sh --yes --skip docker
 
       - name: verify removed
         run: |
-          if grep -q 'bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then
+          if grep -Eq 'ai-boiler-plate|bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then
             echo "STILL zshrc block"; exit 1
           fi
           echo "ok   zshrc block removed"
@@ -243,18 +243,18 @@ jobs:
           export PATH="$HOME/.local/share/mise/shims:$HOME/.bun/bin:$HOME/.local/bin:/opt/homebrew/opt/rustup/bin:$PATH"
           fail=0
           need() { command -v "$1" >/dev/null 2>&1 && echo "ok   $1" || { echo "MISS $1"; fail=1; }; }
-          for t in mise starship rg fd fzf bat gh colima mo node python go rustc gjc codex claude; do need "$t"; done
+          for t in mise starship rg fd fzf bat gh colima mo node python go rustc codex claude; do need "$t"; done
           echo "node:   $(node -v)"
           echo "python: $(python --version)"
           echo "go:     $(go version)"
           echo "codex:  $(codex --version 2>/dev/null | head -1 || echo '?')"
           test -d "$HOME/.oh-my-zsh"            || { echo "MISS oh-my-zsh"; fail=1; }
-          grep -q 'bss-ai-boilerplate:main' "$HOME/.zshrc" || { echo "MISS zshrc block"; fail=1; }
+          grep -q 'ai-boiler-plate:main' "$HOME/.zshrc" || { echo "MISS zshrc block"; fail=1; }
           test -d "$HOME/.codex/plugins/cache/sisyphuslabs/omo" && echo "ok   lazycodex/omo" || echo "warn lazycodex/omo not found"
           exit $fail
 
       - name: uninstall (full teardown)
-        run: ./uninstall.sh --yes --with-gajae
+        run: ./uninstall.sh --yes
 
       - name: verify removed
         run: |
@@ -263,9 +263,9 @@ jobs:
           export PATH="$HOME/.local/share/mise/shims:$HOME/.bun/bin:$HOME/.local/bin:$PATH"
           fail=0
           gone() { command -v "$1" >/dev/null 2>&1 && { echo "STILL $1"; fail=1; } || echo "gone $1"; }
-          for t in gjc codex claude starship mise; do gone "$t"; done
+          for t in codex claude starship mise; do gone "$t"; done
           test -d "$HOME/.oh-my-zsh" && { echo "STILL oh-my-zsh"; fail=1; } || echo "gone oh-my-zsh"
-          if grep -q 'bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then echo "STILL zshrc block"; fail=1; else echo "gone zshrc block"; fi
+          if grep -Eq 'ai-boiler-plate|bss-ai-boilerplate' "$HOME/.zshrc" 2>/dev/null; then echo "STILL zshrc block"; fail=1; else echo "gone zshrc block"; fi
           test -x /opt/homebrew/bin/brew && echo "ok   Homebrew preserved" || { echo "Homebrew missing!"; fail=1; }
           exit $fail
 
@@ -305,25 +305,25 @@ jobs:
           }
           & mise reshim 2>$null
           $env:Path += ";$env:LOCALAPPDATA\mise\shims;$env:USERPROFILE\.bun\bin;$env:USERPROFILE\.local\bin"
-          foreach ($t in 'gjc','codex','claude') {
+          foreach ($t in 'codex','claude') {
             if (Get-Command $t -ErrorAction SilentlyContinue) { Write-Host "ok   $t" }
             else { Write-Host "MISS $t"; $fail = 1 }
           }
           $prof = $PROFILE.CurrentUserAllHosts
-          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'bss-ai-boilerplate:main' -Quiet)) {
+          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'ai-boiler-plate:main' -Quiet)) {
             Write-Host "ok   profile block"
           } else { Write-Host "MISS profile block"; $fail = 1 }
           exit $fail
 
       - name: uninstall (teardown)
         shell: pwsh
-        run: .\windows\uninstall.ps1 -Yes -WithGajae
+        run: .\windows\uninstall.ps1 -Yes
 
       - name: verify removed
         shell: pwsh
         run: |
           $prof = $PROFILE.CurrentUserAllHosts
-          if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'bss-ai-boilerplate' -Quiet)) {
+          if ((Test-Path $prof) -and (Select-String -Path $prof -Pattern 'ai-boiler-plate|bss-ai-boilerplate' -Quiet)) {
             Write-Host "STILL profile block"; exit 1
           }
           Write-Host "ok   profile block removed"

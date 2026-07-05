@@ -58,7 +58,7 @@ wizard_step_addons() {
     1) preference="orchestration" ;;
     2) preference="teacher" ;;
     3) preference="long-work" ;;
-    4) preference="advanced" ;;
+    4) preference="quality" ;;
     *) preference="none" ;;
   esac
   candidates="$(recommendation_candidates "$services" "$preference")"

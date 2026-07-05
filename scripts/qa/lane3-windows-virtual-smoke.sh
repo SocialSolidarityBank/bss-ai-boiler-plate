@@ -9,6 +9,7 @@ install="$ROOT/windows/install.ps1"
 lib="$ROOT/windows/scripts/lib.ps1"
 readme="$ROOT/windows/README.md"
 docker_step="$ROOT/windows/scripts/05-docker.ps1"
+profile_block="$ROOT/windows/config/profile.block.ps1"
 
 assert_fixed() {
   local path="$1" needle="$2"
@@ -23,6 +24,7 @@ steps=(
   "05-docker.ps1:Step-Docker"
   "06-git.ps1:Step-Git"
   "07-agents.ps1:Step-Agents"
+  "09-codex-resume.ps1:Step-Resume"
 )
 
 set +e
@@ -33,13 +35,14 @@ set +e
   assert_file "$lib"
   assert_file "$readme"
   assert_file "$docker_step"
+  assert_file "$profile_block"
 
   assert_contains "$install" '\[switch\]\$DryRun'
   assert_contains "$install" '\[switch\]\$List'
   assert_contains "$install" '\[switch\]\$Status'
   assert_contains "$install" '\[switch\]\$Classic'
-  assert_contains "$install" 'https://github.com/socialsolidaritybank/bss-ai-helper.git'
-  assert_fixed "$install" "\$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents')"
+  assert_contains "$install" 'https://github.com/socialsolidaritybank/ai-boiler-plate.git'
+  assert_fixed "$install" "\$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume')"
   assert_fixed "$install" 'if ($List)'
   assert_fixed "$install" 'Write-Output $_'
   assert_fixed "$install" 'if ($Status)'
@@ -54,6 +57,11 @@ set +e
   assert_contains "$lib" '\[dry-run\]'
   assert_contains "$lib" 'function Install-WingetPackage'
   assert_contains "$lib" '--scope user'
+
+  assert_contains "$profile_block" "GetEnvironmentVariable\\('Path', 'Machine'\\)"
+  assert_contains "$profile_block" "GetEnvironmentVariable\\('Path', 'User'\\)"
+  assert_contains "$profile_block" 'MISE_PWSH_CHPWD_WARNING'
+  assert_contains "$profile_block" 'Get-Command fzf'
 
   for spec in "${steps[@]}"; do
     file="${spec%%:*}"
@@ -82,16 +90,24 @@ set +e
   assert_contains "$ROOT/windows/scripts/06-git.ps1" '\[dry-run\] gh auth login'
   assert_contains "$ROOT/windows/scripts/07-agents.ps1" '\[dry-run\] mise exec -- npm install -g @openai/codex'
   assert_contains "$ROOT/windows/scripts/07-agents.ps1" '\[dry-run\] irm https://claude.ai/install.ps1 \| iex'
+  assert_contains "$ROOT/windows/scripts/07-agents.ps1" 'npx skills@latest add mattpocock/skills'
+  assert_contains "$ROOT/windows/scripts/07-agents.ps1" '/setup-matt-pocock-skills'
   assert_contains "$ROOT/windows/scripts/07-agents.ps1" '\[dry-run\] npx --yes lazycodex-ai install'
+  assert_contains "$ROOT/windows/scripts/recommendations.ps1" '선택한 뒤에만 설치'
+  assert_contains "$ROOT/windows/scripts/09-codex-resume.ps1" 'function Step-Resume'
+  assert_contains "$ROOT/windows/scripts/09-codex-resume.ps1" 'RemainingArgs'
+  assert_contains "$ROOT/windows/scripts/09-codex-resume.ps1" 'NoProfile'
 
   assert_contains "$docker_step" 'DefaultNo'
   assert_contains "$docker_step" 'NEVER install Docker'
   assert_contains "$docker_step" 'not installed non-interactively'
 
-  assert_contains "$readme" 'irm https://raw.githubusercontent.com/socialsolidaritybank/bss-ai-helper/main/windows/install.ps1 \| iex'
+  assert_contains "$readme" 'irm https://raw.githubusercontent.com/socialsolidaritybank/ai-boiler-plate/main/windows/install.ps1 \| iex'
   assert_contains "$readme" 'PowerShell'
   assert_contains "$readme" 'winget'
   assert_contains "$readme" 'foxion37/lazy-starter-kit'
+  retired_addon_pattern="gajae""-code|with-""gajae|(^|[^[:alnum:]_-])g""jc([^[:alnum:]_-]|$)"
+  assert_not_contains "$ROOT/windows/scripts/07-agents.ps1" "$retired_addon_pattern"
 
   printf 'windows virtual smoke checks passed\n'
 ) > "$evidence" 2>&1

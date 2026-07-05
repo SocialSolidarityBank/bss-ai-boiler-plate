@@ -1,4 +1,4 @@
-# Brewfile — declarative Homebrew manifest for bss-ai-boilerplate.
+# Brewfile — declarative Homebrew manifest for ai-boiler-plate.
 # Applied with: brew bundle --file Brewfile
 # Safe to edit: add/remove lines, then re-run ./install.sh --only brew
 
@@ -24,7 +24,7 @@ brew "starship"       # cross-shell prompt
 brew "mise"           # node / python / go (and more) version manager
 brew "uv"             # fast Python package/installer manager
 brew "rustup"         # Rust toolchain manager (stable installed in step 03)
-brew "bun"            # JS runtime + package manager (used for gajae-code)
+brew "bun"            # JS runtime + package manager
 
 # --- containers ----------------------------------------------------------
 brew "colima"         # lightweight container runtime (Docker without Desktop)

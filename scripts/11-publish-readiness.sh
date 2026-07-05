@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET_REPO="socialsolidaritybank/bss-ai-helper"
+TARGET_REPO="socialsolidaritybank/ai-boiler-plate"
 TARGET_URL="https://github.com/${TARGET_REPO}"
 TARGET_GIT="${TARGET_URL}.git"
 
@@ -14,7 +14,7 @@ check_readiness() {
   local current
   current="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
   cat <<EOF
-BSS AI Helper publish readiness
+ai-boiler-plate publish readiness
 
 Target repository: ${TARGET_URL}
 Target clone URL: ${TARGET_GIT}

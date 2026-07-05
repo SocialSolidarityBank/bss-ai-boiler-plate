@@ -1,12 +1,27 @@
-# managed by bss-ai-boilerplate — edits between the markers are overwritten on re-run.
+# managed by ai-boiler-plate — edits between the markers are overwritten on re-run.
 
 # ~/.local/bin: user-local commands (mise, starship, uv, hermes …)
 [ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 
-[ -d "$HOME/.bss-ai-helper/bin" ] && export PATH="$HOME/.bss-ai-helper/bin:$PATH"
-alias bss-ai-helper="$HOME/.bss-ai-helper/bin/bss-ai-helper"
-alias ai-helper='bss-ai-helper'
-alias bss-ai='bss-ai-helper'
+AI_BOILER_PLATE_HOME="${AI_BOILER_PLATE_HOME:-${BSS_AI_HELPER_HOME:-$HOME/.ai-boiler-plate}}"
+if [ ! -d "$AI_BOILER_PLATE_HOME/bin" ] && [ -d "$HOME/.bss-ai-helper/bin" ]; then
+  AI_BOILER_PLATE_HOME="$HOME/.bss-ai-helper"
+fi
+[ -d "$AI_BOILER_PLATE_HOME/bin" ] && export PATH="$AI_BOILER_PLATE_HOME/bin:$PATH"
+ai-boiler-plate() {
+  if [ -x "$AI_BOILER_PLATE_HOME/bin/ai-boiler-plate" ]; then
+    "$AI_BOILER_PLATE_HOME/bin/ai-boiler-plate" "$@"
+  elif [ -x "$AI_BOILER_PLATE_HOME/bin/bss-ai-helper" ]; then
+    "$AI_BOILER_PLATE_HOME/bin/bss-ai-helper" "$@"
+  else
+    echo "ai-boiler-plate command not installed under $AI_BOILER_PLATE_HOME/bin" >&2
+    return 127
+  fi
+}
+# Deprecated compatibility aliases for installed users; prefer ai-boiler-plate.
+alias bss-ai-helper='ai-boiler-plate'
+alias ai-helper='ai-boiler-plate'
+alias bss-ai='ai-boiler-plate'
 
 # mise: node / python / go version manager
 command -v mise >/dev/null && eval "$(mise activate zsh)"
@@ -15,7 +30,7 @@ command -v mise >/dev/null && eval "$(mise activate zsh)"
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 [ -d "$HOME/.cargo/bin" ] && export PATH="$HOME/.cargo/bin:$PATH"
 
-# bun: global packages (e.g. gjc / gajae-code) live in ~/.bun/bin
+# bun: global packages live in ~/.bun/bin
 export BUN_INSTALL="$HOME/.bun"
 [ -d "$BUN_INSTALL/bin" ] && export PATH="$BUN_INSTALL/bin:$PATH"
 [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"

@@ -1,4 +1,4 @@
-# starship config — installed by bss-ai-boilerplate.
+# starship config — installed by ai-boiler-plate.
 # Tweak freely; docs: https://starship.rs/config/
 
 add_newline = true

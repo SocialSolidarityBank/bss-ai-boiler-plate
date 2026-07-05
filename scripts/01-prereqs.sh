@@ -47,7 +47,7 @@ step_prereqs() {
   local p; p="$(brew_prefix)"
   remove_block "$HOME/.zprofile" "macos-starter-kit:brew"   # migrate pre-rename block
   remove_block "$HOME/.zprofile" "lazy-starter-kit:brew"
-  inject_block "$HOME/.zprofile" "bss-ai-boilerplate:brew" <<EOF
+  inject_block "$HOME/.zprofile" "ai-boiler-plate:brew" <<EOF
 eval "\$($p/bin/brew shellenv)"
 EOF
 }
