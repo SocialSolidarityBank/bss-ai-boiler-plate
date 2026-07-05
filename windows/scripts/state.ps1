@@ -1,6 +1,10 @@
-function Get-HelperHome {
+﻿function Get-HelperHome {
+  if ($env:AI_BOILER_PLATE_HOME) { return $env:AI_BOILER_PLATE_HOME }
   if ($env:BSS_AI_HELPER_HOME) { return $env:BSS_AI_HELPER_HOME }
-  return (Join-Path $HOME '.bss-ai-helper')
+  $preferred = Join-Path $HOME '.ai-boiler-plate'
+  $legacy = Join-Path $HOME '.bss-ai-helper'
+  if ((Test-Path $legacy) -and (-not (Test-Path $preferred))) { return $legacy }
+  return $preferred
 }
 
 function Get-StatePath { Join-Path (Get-HelperHome) 'state.json' }
@@ -21,14 +25,36 @@ function ConvertTo-PlainObject {
     return $hash
   }
   if ($Value -is [System.Array]) {
-    return @($Value | ForEach-Object { ConvertTo-PlainObject -Value $_ })
+    $items = New-Object System.Collections.ArrayList
+    foreach ($item in $Value) {
+      [void]$items.Add((ConvertTo-PlainObject -Value $item))
+    }
+    return ,($items.ToArray())
   }
-  if ($Value.PSObject -and $Value.PSObject.Properties.Count -gt 0 -and -not ($Value -is [string])) {
+  if ($Value -is [pscustomobject]) {
     $hash = @{}
-    foreach ($prop in $Value.PSObject.Properties) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
+    foreach ($prop in @($Value.PSObject.Properties)) { $hash[$prop.Name] = ConvertTo-PlainObject -Value $prop.Value }
     return $hash
   }
   return $Value
+}
+
+function Set-StateArrayValue {
+  param([Parameter(Mandatory)]$State, [Parameter(Mandatory)][string]$Key)
+  if (-not $State.ContainsKey($Key) -or $null -eq $State[$Key]) {
+    $State[$Key] = [object[]]@()
+  } elseif ($State[$Key] -is [System.Array]) {
+    $State[$Key] = [object[]]$State[$Key]
+  } else {
+    $State[$Key] = [object[]]@($State[$Key])
+  }
+}
+
+function Normalize-HelperStateArrays {
+  param([Parameter(Mandatory)]$State)
+  foreach ($key in @('ai_services', 'aiServices', 'tools')) {
+    Set-StateArrayValue -State $State -Key $key
+  }
 }
 
 function Read-HelperState {
@@ -45,6 +71,7 @@ function Read-HelperState {
     if (-not $state.ContainsKey('aiServices')) { $state['aiServices'] = @($state['ai_services']) }
     if (-not $state.ContainsKey('addons')) { $state['addons'] = @{} }
     if (-not $state.ContainsKey('tools')) { $state['tools'] = @() }
+    Normalize-HelperStateArrays -State $state
     return $state
   } catch {
     Write-Warn "진행 상태 파일을 읽을 수 없습니다. 파일은 지우지 않았습니다."
@@ -56,6 +83,7 @@ function Write-HelperState {
   param([Parameter(Mandatory)]$State)
   $homeDir = Get-HelperHome
   New-Item -ItemType Directory -Path $homeDir -Force | Out-Null
+  Normalize-HelperStateArrays -State $State
   $State['updated_at'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
   $State | ConvertTo-Json -Depth 8 | Set-Content -Path (Get-StatePath) -Encoding UTF8
 }
@@ -76,8 +104,9 @@ function Set-StepStatus {
 function Add-AiService {
   param([string[]]$Services)
   $state = Read-HelperState
-  $state['ai_services'] = @($Services | Where-Object { $_ })
-  $state['aiServices'] = @($Services | Where-Object { $_ })
+  $serviceList = [object[]]@($Services | Where-Object { $_ })
+  $state['ai_services'] = $serviceList
+  $state['aiServices'] = $serviceList
   foreach ($service in $state['ai_services']) {
     if ($service -eq 'Codex') {
       Set-ToolInState -State $state -Name 'Codex CLI' -Status 'complete' -Kind 'ai'

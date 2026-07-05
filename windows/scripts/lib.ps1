@@ -1,4 +1,4 @@
-# lib.ps1 -- shared helpers for bss-ai-boilerplate
+# lib.ps1 -- shared helpers for ai-boiler-plate
 # dot-sourced by install.ps1 and every scripts/NN-*.ps1 step.
 # Targets Windows PowerShell 5.1+ and PowerShell 7+.
 

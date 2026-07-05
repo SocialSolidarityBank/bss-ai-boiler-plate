@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>BSS AI Helper — 설치 흐름</title>
+<title>ai-boiler-plate — 설치 흐름</title>
 <style>
   :root {
     --bg: #0c0e14;
@@ -117,21 +117,21 @@
 
   <header>
     <div class="badge">macOS · Linux · Windows · MIT</div>
-    <h1>BSS AI Helper</h1>
-    <p class="tag">먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.</p>
-    <p class="chain">clone &rarr; <b>codex</b> &rarr; <b>BSS AI Helper 실행해줘</b> &rarr; status/report/manual</p>
+    <h1>ai-boiler-plate</h1>
+    <p class="tag">Claude/Codex 스타일 코딩 에이전트 앱에서 repo 링크를 주고 시작합니다.</p>
+    <p class="chain">agent app &rarr; <b>repo link</b> &rarr; <b>보일러 플레이트 시작해줘</b> &rarr; status/report/manual</p>
     <div class="cmd">
-      <span class="pmt">$</span>
-      <code id="curl">git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper && cd ~/bss-ai-helper && codex</code>
+      <span class="pmt">›</span>
+      <code id="curl">https://github.com/socialsolidaritybank/ai-boiler-plate 를 열고 "보일러 플레이트 시작해줘"</code>
       <button onclick="copyCmd(this)">복사</button>
     </div>
   </header>
 
   <div class="sec-title">처음 시작하기</div>
   <div class="props">
-    <div class="prop"><b>Codex에서 시작</b><p>Codex가 열리면 <code>BSS AI Helper 실행해줘</code>라고 말합니다.</p></div>
+    <div class="prop"><b>Claude/Codex에서 시작</b><p>에이전트 앱에 repo 링크를 주고 <code>보일러 플레이트 시작해줘</code>라고 말합니다.</p></div>
     <div class="prop"><b>승인 후 설치</b><p>설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다.</p></div>
-    <div class="prop"><b>다시 시작</b><p>터미널에서는 <code>bss-ai-helper</code>, <code>ai-helper</code>, <code>bss-ai</code>를 사용할 수 있습니다.</p></div>
+    <div class="prop"><b>Fallback 명령</b><p>PowerShell/터미널 명령은 고급 사용자, QA, 장애 복구용으로만 사용합니다.</p></div>
   </div>
 
   <div class="sec-title">설치 순서 — 7단계 (의존성 순서대로)</div>
@@ -205,9 +205,9 @@
       <div class="num">7</div>
       <div class="card">
         <h3><span class="id">agents</span> AI 코딩 에이전트 — 최종 단계</h3>
-        <p>체인의 정점. node/bun 위에 AI 에이전트를 얹습니다. <b>gajae-code</b>는 bun 전역, <b>codex</b>는 npm 전역, <b>lazycodex</b>는 npx로 codex 위에 OmO 하니스를, <b>Hermes Agent</b>(Nous Research)는 공식 설치 스크립트로 (<code>HERMES=0</code>으로 스킵 가능).</p>
+        <p>체인의 정점. Claude Code와 Codex를 중심으로 AI 에이전트를 준비하고, Matt Pocock Skills는 필수 setup으로 안내합니다. LazyCodex와 Hermes Agent 같은 add-on은 필요할 때만 명시적으로 선택합니다.</p>
         <p class="needs">↳ 필요: runtimes (node/npm), brew (bun)</p>
-        <div class="tools"><span>gajae-code (gjc)</span><span>codex</span><span>lazycodex (OmO)</span><span>Hermes Agent</span></div>
+        <div class="tools"><span>Claude Code</span><span>Codex</span><span>Matt Pocock Skills</span><span>lazycodex (OmO)</span><span>Hermes Agent</span></div>
       </div>
     </div>
 
@@ -230,6 +230,7 @@
     <div class="prop"><b>멱등성</b><p>몇 번을 돌려도 안전. 설정 파일은 마커 블록으로 교체되어 중복·손상이 없습니다.</p></div>
     <div class="prop"><b>bash 3.2 호환</b><p>맥 기본 셸로 동작. 갓 산 맥에서 추가 설치 없이 바로 실행됩니다.</p></div>
     <div class="prop"><b>비파괴적</b><p>기존 파일·설정은 보존. 빈 값만 채우고, 사용자 것은 덮어쓰지 않습니다.</p></div>
+    <div class="prop"><b>Business judgment route</b><p>설치기는 사업성 판단을 직접 하지 않습니다. business viability/commercial judgment 질문은 보이는 G-stack office-hours repo/link로 보내고, 없으면 그때 사용자에게 요청합니다.</p></div>
   </div>
 
   <div class="sec-title">권한 (sudo)</div>
@@ -241,13 +242,13 @@
 
   <div class="sec-title">이미 도구가 깔린 맥에서</div>
   <div class="props">
-    <div class="prop"><b>비파괴적</b><p>brew·oh-my-zsh·gjc·codex는 있으면 스킵. git 신원은 비었을 때만 설정 (덮어쓰지 않음).</p></div>
+    <div class="prop"><b>비파괴적</b><p>brew·oh-my-zsh·codex는 있으면 스킵. git 신원은 비었을 때만 설정 (덮어쓰지 않음).</p></div>
     <div class="prop"><b>node 가림 주의</b><p>기존 node(.pkg/nvm/brew)는 안 지워지고 mise node가 PATH로 가립니다. 감지 시 경고 출력 — <code>which -a node</code>로 확인.</p></div>
     <div class="prop"><b>.zshrc 중복</b><p>손으로 편집한 줄이 있으면 키트 블록이 추가돼 중복 실행(무해). 한 곳으로 정리 권장.</p></div>
   </div>
 
   <footer>
-    <p><a href="https://github.com/socialsolidaritybank/bss-ai-helper">github.com/socialsolidaritybank/bss-ai-helper</a> · MIT License</p>
+    <p><a href="https://github.com/socialsolidaritybank/ai-boiler-plate">github.com/socialsolidaritybank/ai-boiler-plate</a> · MIT License</p>
     <p>원본: <a href="https://github.com/foxion37/lazy-starter-kit">foxion37/lazy-starter-kit</a>에서 포크해 시작했습니다.</p>
   </footer>
 

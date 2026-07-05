@@ -11,7 +11,7 @@ for any addition**:
 - **Base** — the default install (`install.sh` + [`Brewfile`](./Brewfile) + the
   `scripts/` steps). This is the **current, frozen, lean set**: prereqs, core dev
   CLI, runtimes (mise/rustup), shell, containers, Git/GitHub, and the AI coding
-  agents. The base stays focused on **"a fresh Mac → a working dev environment."**
+  agents. The base stays focused on **"a fresh machine → a working dev environment."**
   It should grow slowly and only for things nearly everyone setting up a dev Mac
   needs.
 
@@ -21,11 +21,18 @@ for any addition**:
   personal preferences. This keeps the base from drifting into a "recommended
   apps" dump.
 
+- **Skills/plugins** — the v1 swap room for agent-layer changes. Keep package
+  managers, runtimes, shell setup, Git/GitHub, containers, status/resume, and
+  report/manual generation fixed unless a separate base-installer project
+  explicitly approves changing them. Use [`docs/extension-points.md`](./docs/extension-points.md)
+  before replacing a required skill or optional plugin.
+
 Rule of thumb:
 
 | Is it... | Goes in |
 |---|---|
-| A tool ~every dev Mac needs (compiler, runtime, shell, VCS, container, agent) | **Base** |
+| A tool nearly every supported OS setup needs (compiler, runtime, shell, VCS, container, core agent) | **Base** |
+| A skill, plugin, or add-on for Claude/Codex behavior | **Skills/plugins** |
 | A nice-to-have / GUI / daily-use / opinionated pick | **Optional** |
 
 PRs that add non-core tools to the base will be asked to move them to

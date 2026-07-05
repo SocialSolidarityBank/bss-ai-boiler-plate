@@ -20,8 +20,7 @@ _sanitize_services() {
 _run_primary_ai_install() {
   local platform="$1" codex="$2" claude="$3" step_file
   if [[ "$codex" != "1" && "$claude" != "1" ]]; then
-    info "자동 설치할 수 있는 기본 AI 도구가 없어 서비스 이름만 기록했습니다."
-    return 0
+    info "기본 AI 도구는 기록만 하고, 필수 Matt Pocock Skills 설정은 진행합니다."
   fi
   case "$platform" in
     linux) step_file="$ROOT/scripts/07-agents.sh" ;;
@@ -38,11 +37,6 @@ _run_primary_ai_install() {
 
 _run_primary_ai_install_with_recovery() {
   local platform="$1" codex="$2" claude="$3" services="$4" old_ifs
-  if [[ "$codex" != "1" && "$claude" != "1" ]]; then
-    _run_primary_ai_install "$platform" "$codex" "$claude"
-    state_set_step_status ai-tools complete "$services"
-    return 0
-  fi
   while :; do
     if _run_primary_ai_install "$platform" "$codex" "$claude"; then
       old_ifs="$IFS"; IFS=','

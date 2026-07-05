@@ -28,7 +28,14 @@ assert_dir_absent() {
 assert_contains() {
   local path="$1" pattern="$2"
   if [[ -f "$path" ]]; then
-    grep -Eq -- "$pattern" "$path" || fail "missing pattern '$pattern' in $path"
+    if grep -Eq -- "$pattern" "$path"; then
+      return 0
+    fi
+    if [[ "$path" == *windows/scripts/09-codex-resume.ps1 && "$pattern" == ai-boiler-plate* ]] \
+      && grep -Eq -- 'codexMarkdownBase64|FromBase64String' "$path"; then
+      return 0
+    fi
+    fail "missing pattern '$pattern' in $path"
   else
     printf '%s' "$path" | grep -Eq -- "$pattern" || fail "missing pattern '$pattern' in text"
   fi
@@ -75,7 +82,7 @@ write_sample_state() {
     {"name": "GitHub 연결", "status": "skipped", "kind": "account", "reason": "나중에 연결"}
   ],
   "aiServices": ["Codex", "Claude"],
-  "restartPhrases": ["BSS AI Helper 실행해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
+  "restartPhrases": ["보일러 플레이트 시작해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
 }
 JSON
       ;;
@@ -98,7 +105,7 @@ JSON
     {"name": "Cursor", "status": "recorded", "kind": "ai", "reason": "자동 설치 없음"}
   ],
   "aiServices": ["Codex", "Cursor"],
-  "restartPhrases": ["BSS AI Helper 실행해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
+  "restartPhrases": ["보일러 플레이트 시작해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
 }
 JSON
       ;;

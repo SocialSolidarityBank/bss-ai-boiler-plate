@@ -69,14 +69,16 @@ step_shell() {
   remove_block "$HOME/.zshrc" "macos-starter-kit:ohmyzsh"
   remove_block "$HOME/.zshrc" "lazy-starter-kit:main"
   remove_block "$HOME/.zshrc" "lazy-starter-kit:ohmyzsh"
+  remove_block "$HOME/.zshrc" "bss-ai-boilerplate:main"
+  remove_block "$HOME/.zshrc" "bss-ai-boilerplate:ohmyzsh"
 
   # --- ensure oh-my-zsh is sourced (only if user isn't already doing it) -
   # Guard on the framework actually being present: injecting the source line
   # when the install failed would error on every new shell startup.
   if [[ "$DRY_RUN" == "1" ]]; then
-    info "[dry-run] would ensure oh-my-zsh is sourced in ~/.zshrc (bss-ai-boilerplate:ohmyzsh block)"
+    info "[dry-run] would ensure oh-my-zsh is sourced in ~/.zshrc (ai-boiler-plate:ohmyzsh block)"
   elif [[ -d "$OMZ_DIR" ]] && ! grep -qs 'oh-my-zsh.sh' "$HOME/.zshrc" 2>/dev/null; then
-    inject_block "$HOME/.zshrc" "bss-ai-boilerplate:ohmyzsh" <<'EOF'
+    inject_block "$HOME/.zshrc" "ai-boiler-plate:ohmyzsh" <<'EOF'
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME=""            # prompt handled by starship below
 plugins=(git npm node macos)
@@ -86,9 +88,9 @@ EOF
 
   # --- our zsh config block (mise, fzf, bat, rustup, bun, starship) ------
   if [[ "$DRY_RUN" == "1" ]]; then
-    info "[dry-run] inject 'bss-ai-boilerplate:main' block into ~/.zshrc"
+    info "[dry-run] inject 'ai-boiler-plate:main' block into ~/.zshrc"
   else
-    inject_block "$HOME/.zshrc" "bss-ai-boilerplate:main" < "$ROOT/config/zshrc.block.sh"
+    inject_block "$HOME/.zshrc" "ai-boiler-plate:main" < "$ROOT/config/zshrc.block.sh"
   fi
 
   # --- starship preset (don't clobber a user's existing one) -------------

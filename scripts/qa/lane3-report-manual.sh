@@ -23,6 +23,30 @@ history="$helper_home/history.jsonl"
 assert_file "$report"
 assert_file "$manual"
 assert_file "$history"
+assert_contains "$report" 'ai-boiler-plate'
+assert_contains "$report" '보일러 플레이트 시작해줘'
+assert_contains "$manual" 'ai-boiler-plate'
+assert_contains "$manual" '보일러 플레이트 시작해줘'
+assert_not_contains "$report" 'git clone https://github.com/socialsolidaritybank/bss-ai-helper'
+assert_not_contains "$manual" 'git clone https://github.com/socialsolidaritybank/bss-ai-helper'
+assert_not_contains "$report" 'git clone https://github.com/socialsolidaritybank/ai-boiler-plate.git ~/ai-boiler-plate'
+assert_not_contains "$manual" 'git clone https://github.com/socialsolidaritybank/ai-boiler-plate.git ~/ai-boiler-plate'
+assert_not_contains "$report" '^cd ~/ai-boiler-plate$'
+assert_not_contains "$manual" '^cd ~/ai-boiler-plate$'
+assert_not_contains "$report" '^codex$'
+assert_not_contains "$manual" '^codex$'
+assert_contains "$report" 'Deprecated compatibility'
+assert_contains "$manual" 'Deprecated compatibility'
+assert_contains "$report" 'Business judgment route'
+assert_contains "$report" 'does not decide business viability'
+assert_contains "$report" 'G-stack office-hours repo/link'
+assert_contains "$report" 'npx skills@latest add mattpocock/skills'
+assert_contains "$report" '/setup-matt-pocock-skills'
+assert_contains "$manual" 'Business judgment route'
+assert_contains "$manual" 'does not decide business viability'
+assert_contains "$manual" 'G-stack office-hours repo/link'
+assert_contains "$manual" 'npx skills@latest add mattpocock/skills'
+assert_contains "$manual" '/setup-matt-pocock-skills'
 
 case "$mode" in
   failed-addon)

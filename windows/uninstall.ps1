@@ -1,11 +1,10 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  bss-ai-boilerplate -- uninstaller. Reverses install.ps1 in reverse order.
+  ai-boiler-plate -- uninstaller. Reverses install.ps1 in reverse order.
 
 .DESCRIPTION
   Destructive groups are confirm-gated. Never auto-removes your git identity.
-  gajae-code (gjc) is kept unless you pass -WithGajae.
 
   Groups (reverse order): agents shell docker runtimes packages
 
@@ -13,8 +12,7 @@
 .PARAMETER Yes            Non-interactive: accept every removal prompt.
 .PARAMETER Only           Comma-separated groups to run.
 .PARAMETER Skip           Comma-separated groups to skip.
-.PARAMETER WithGajae      Also remove gajae-code (gjc). Refused if gjc is running.
-.PARAMETER KeepCodexHome  Keep ~/.codex when removing codex.
+.PARAMETER KeepCodexHome  Deprecated no-op; runtime/auth roots are always preserved.
 .PARAMETER List           List group ids and exit.
 #>
 [CmdletBinding()]
@@ -23,7 +21,6 @@ param(
   [switch]$Yes,
   [string[]]$Only = @(),
   [string[]]$Skip = @(),
-  [switch]$WithGajae,
   [switch]$KeepCodexHome,
   [switch]$List
 )
@@ -34,6 +31,7 @@ if (-not $Root) { $Root = Split-Path -Parent $MyInvocation.MyCommand.Path }
 . (Join-Path $Root 'scripts\lib.ps1')
 $script:DryRun    = [bool]$DryRun
 $script:AssumeYes = [bool]$Yes
+if ($KeepCodexHome) { Write-Warn "-KeepCodexHome is deprecated: runtime/auth roots are always preserved." }
 
 $versionFile = Join-Path $Root '..\VERSION'
 $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { 'dev' }
@@ -84,69 +82,23 @@ function Undo-Agents {
   }
   if ($cleared) { Write-Ok "cleared lazycodex npx cache" } else { Write-Info "no lazycodex npx cache" }
 
-  # ~/.codex
-  $codexHome = Join-Path $env:USERPROFILE '.codex'
-  if ((Test-Path $codexHome) -and (-not $KeepCodexHome)) {
-    if (Confirm-Action "Remove ~/.codex (codex home: config, auth, sessions, omo plugin)?") {
-      $auth = Join-Path $codexHome 'auth.json'
-      if (Test-Path $auth) {
-        $bak = Join-Path $env:USERPROFILE ("codex-auth-backup-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + ".json")
-        if ($script:DryRun) { Write-Info "[dry-run] would back up ~/.codex/auth.json -> $($bak.Replace($env:USERPROFILE, '~'))" }
-        else { Copy-Item $auth $bak; Write-Ok "backed up auth.json -> $bak" }
-      }
-      if ($script:DryRun) { Write-Info "[dry-run] would remove ~/.codex" }
-      else { Remove-Item $codexHome -Recurse -Force -ErrorAction SilentlyContinue; Write-Ok "removed ~/.codex" }
-    } else { Write-Info "kept ~/.codex" }
-  }
+  Write-Info "Preserving runtime/auth roots: ~/.codex, ~/.claude, ~/.claude.json, ~/.agents, and auth/token/OAuth files"
 
-  # Claude Code (claude) -- native install from https://claude.ai/install.ps1.
-  # Remove the binary + data dir unconditionally (mirrors the native uninstall);
-  # ~/.claude settings/auth are confirm-gated below like ~/.codex.
   $claudeBin  = Join-Path $env:USERPROFILE '.local\bin\claude.exe'
   $claudeData = Join-Path $env:USERPROFILE '.local\share\claude'
   if ((Test-Path $claudeBin) -or (Test-Path $claudeData)) {
     if ($script:DryRun) {
       if (Test-Path $claudeBin)  { Write-Info "[dry-run] would remove ~/.local/bin/claude.exe" }
-      if (Test-Path $claudeData) { Write-Info "[dry-run] would remove ~/.local/share/claude" }
+      if (Test-Path $claudeData) { Write-Info "[dry-run] would preserve ~/.local/share/claude runtime data" }
     } else {
       if (Test-Path $claudeBin)  { Remove-Item $claudeBin -Force -ErrorAction SilentlyContinue }
-      if (Test-Path $claudeData) { Remove-Item $claudeData -Recurse -Force -ErrorAction SilentlyContinue }
-      Write-Ok "removed Claude Code (claude.exe + data dir)"
+      if (Test-Path $claudeData) { Write-Info "kept ~/.local/share/claude runtime data" }
+      Write-Ok "removed Claude Code command; runtime data preserved"
     }
   } else {
     Write-Info "Claude Code not installed"
   }
 
-  # ~/.claude + ~/.claude.json (Claude Code settings, history, auth)
-  $claudeHome = Join-Path $env:USERPROFILE '.claude'
-  $claudeJson = Join-Path $env:USERPROFILE '.claude.json'
-  if ((Test-Path $claudeHome) -or (Test-Path $claudeJson)) {
-    if (Confirm-Action "Remove ~/.claude and ~/.claude.json (Claude Code settings, history, auth)?") {
-      if (Test-Path $claudeJson) {
-        $bak = Join-Path $env:USERPROFILE ("claude-json-backup-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + ".json")
-        if ($script:DryRun) { Write-Info "[dry-run] would back up ~/.claude.json -> $($bak.Replace($env:USERPROFILE, '~'))" }
-        else { Copy-Item $claudeJson $bak; Write-Ok "backed up .claude.json -> $bak" }
-      }
-      if ($script:DryRun) { Write-Info "[dry-run] would remove ~/.claude and ~/.claude.json" }
-      else {
-        if (Test-Path $claudeHome) { Remove-Item $claudeHome -Recurse -Force -ErrorAction SilentlyContinue }
-        if (Test-Path $claudeJson) { Remove-Item $claudeJson -Force -ErrorAction SilentlyContinue }
-        Write-Ok "removed ~/.claude and ~/.claude.json"
-      }
-    } else { Write-Info "kept ~/.claude and ~/.claude.json" }
-  }
-
-  # gajae-code (gjc)
-  if ($WithGajae) {
-    if (Get-Process -Name gjc -ErrorAction SilentlyContinue) {
-      Write-Warn "gjc is RUNNING -- refusing to remove gajae-code (close the session, then re-run)"
-    } elseif (Test-HasCommand gjc) {
-      Write-Info "Removing gajae-code..."
-      if (-not $script:DryRun) { & bun remove -g gajae-code } else { Write-Info "[dry-run] bun remove -g gajae-code" }
-    } else { Write-Info "gajae-code not installed" }
-  } else {
-    Write-Info "Keeping gajae-code (pass -WithGajae to remove)"
-  }
 }
 
 # ---------------------------------------------------------------------------
@@ -157,6 +109,7 @@ function Undo-Shell {
   # Strip the block from BOTH host profiles (5.1 WindowsPowerShell\ and 7
   # PowerShell\); the installer writes both.
   foreach ($profilePath in (Get-AllHostsProfilePaths)) {
+    Remove-ManagedBlock -Path $profilePath -Tag 'ai-boiler-plate:main'
     Remove-ManagedBlock -Path $profilePath -Tag 'bss-ai-boilerplate:main'
     Remove-ManagedBlock -Path $profilePath -Tag 'lazy-starter-kit:main'
   }
@@ -259,7 +212,7 @@ foreach ($tok in (@(@($Only) + @($Skip)) | ForEach-Object { $_ -split ',' } | Fo
 if (-not (Test-IsWindows)) { Stop-Kit "Windows only." }
 if ($script:DryRun) { Write-Warn "DRY-RUN: no changes will be made." }
 
-Write-Host "== bss-ai-boilerplate v$KitVersion - uninstall ==" -ForegroundColor White
+Write-Host "== ai-boiler-plate v$KitVersion - uninstall ==" -ForegroundColor White
 $selected = @(Get-SelectedGroups)
 Write-Info ("groups: " + ($selected -join ' '))
 Write-Warn "Your git identity is left untouched (remove manually if desired)."

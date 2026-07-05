@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib.sh — macOS helpers for bss-ai-boilerplate.
+# lib.sh — macOS helpers for ai-boiler-plate.
 # sourced by install.sh and every scripts/NN-*.sh step.
 #
 # OS-agnostic helpers (colors, run, ask/confirm, inject_block, …) live in

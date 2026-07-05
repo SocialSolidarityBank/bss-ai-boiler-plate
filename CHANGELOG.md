@@ -1,11 +1,38 @@
 # Changelog
 
-All notable changes to **lazy-starter-kit** are documented here.
+All notable changes to **ai-boiler-plate** are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-07-05
+
+### Added
+- v1 `ai-boiler-plate` agent-first flow: users start from Claude/Codex with the
+  repo link and `보일러 플레이트 시작해줘`, while terminal commands remain
+  fallback, advanced, and QA surfaces.
+- Progress state, resume wrappers, generated report/manual output, and
+  agent-facing restart guidance for the ai-boiler-plate identity.
+- Required Matt Pocock Skills setup and follow-up `/setup-matt-pocock-skills`
+  guidance.
+- G-stack office-hours routing for business viability, commercial judgment, and
+  customer-value questions.
+- `docs/extension-points.md` to keep core installer elements fixed while allowing
+  future skills/plugins/add-ons to be swapped intentionally.
+
+### Changed
+- Public naming and managed-block labels now prefer `ai-boiler-plate`; legacy
+  names remain only as deprecated compatibility, provenance, or backup
+  compatibility.
+- Optional add-ons are gated and default off. LazyCodex, oh-my-claudecode,
+  Hermes, and status-only checks stay opt-in where supported.
+- Runtime/auth roots are always preserved by uninstall flows.
+
+### Removed
+- Removed gajae-code / `gjc` from product docs, installers, recommendations,
+  reports, and QA surfaces.
 
 ## [0.3.0] - 2026-07-03
 
@@ -33,15 +60,16 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 - **Windows kit** (`windows/`): a PowerShell installer (`install.ps1`, 5.1+/7+)
   using **winget** for packages plus **mise**/**rustup** for runtimes. Wires up a
   managed PowerShell profile block (starship, PSReadLine, PSFzf, bun/cargo PATH),
-  Docker Desktop (opt-in), git identity, and the AI agents (gajae-code, codex,
-  lazycodex; Hermes via WSL2). Includes `uninstall.ps1` and a README.
+  Docker Desktop (opt-in), git identity, and the AI agents (codex, lazycodex;
+  Hermes via WSL2). Includes `uninstall.ps1` and a README.
 - **CI**: added `lint-linux` (shellcheck + `bash -n`) and `lint-windows`
   (PowerShell parse + PSScriptAnalyzer) jobs.
 - **Docs**: root README now links all three platform kits (macOS at root,
   `linux/`, `windows/`).
 - **Real end-to-end CI on all three OSes**: `windows-latest` (Server 2025) and
   `ubuntu-latest` install→verify→uninstall jobs, alongside the existing macOS one.
-  Agents (gajae-code + codex) are covered on Linux and Windows.
+  Agents (codex and optional orchestration helpers) are covered on Linux and
+  Windows.
 - **Verified end-to-end on Ubuntu, Fedora, openSUSE and Arch** (glibc). Alpine/
   musl is explicitly **unsupported** (upstream node/ast-grep/bun have no musl builds).
 - **CI distro matrix**: Fedora, Arch and openSUSE Tumbleweed now run the full
@@ -127,10 +155,10 @@ and on every push via GitHub Actions.
 - **docker**: Colima + docker CLI plugin wiring (Docker Desktop not required).
 - **git**: identity (GitHub noreply email), HTTPS credential helper, sane
   defaults — only fills empty values, never clobbers.
-- **agents**: gajae-code (`gjc`), codex, lazycodex (OmO), and Hermes Agent
+- **agents**: codex, lazycodex (OmO), and Hermes Agent
   (`hermes`, skippable with `HERMES=0`).
 - **Uninstaller** (`uninstall.sh`): reverse-order teardown, confirm-gated,
-  `--with-gajae` / `--keep-codex-home`. Never auto-removes Homebrew, Xcode CLT,
+  optional agent teardown / `--keep-codex-home`. Never auto-removes Homebrew, Xcode CLT,
   or your git identity.
 - **Docs**: English + Korean READMEs, GitHub Pages install-flow page,
   Permissions and "running on a Mac that already has tools" sections.
@@ -145,7 +173,8 @@ and on every push via GitHub Actions.
 - dry-run: `brew`/`runtimes` steps degrade gracefully on a bare machine instead
   of aborting when prerequisite tools aren't installed yet.
 
-[Unreleased]: https://github.com/Heoooooon/lazy-starter-kit/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/Heoooooon/lazy-starter-kit/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/Heoooooon/lazy-starter-kit/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Heoooooon/lazy-starter-kit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/SocialSolidarityBank/bss-ai-boiler-plate/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/SocialSolidarityBank/bss-ai-boiler-plate/compare/v0.3.0...v1.0.0
+[0.3.0]: https://github.com/SocialSolidarityBank/bss-ai-boiler-plate/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/SocialSolidarityBank/bss-ai-boiler-plate/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/SocialSolidarityBank/bss-ai-boiler-plate/releases/tag/v0.1.0

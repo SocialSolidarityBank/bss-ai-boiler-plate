@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# common.sh — OS-agnostic shared helpers for bss-ai-boilerplate.
+# common.sh — OS-agnostic shared helpers for ai-boiler-plate.
 #
 # Sourced by scripts/lib.sh (macOS) and linux/scripts/lib.sh, each of which adds
 # its own OS-specific bits. Kept in ONE place so a fix can't accidentally land in

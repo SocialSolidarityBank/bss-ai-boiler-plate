@@ -1,4 +1,4 @@
-function Read-WizardChoice {
+﻿function Read-WizardChoice {
   param([string]$Prompt, [string]$Default = '')
   if ($script:AssumeYes) { return $Default }
   if ([Console]::IsInputRedirected) {
@@ -34,7 +34,7 @@ function Invoke-WizardRecovery {
 function Start-Wizard {
   param([string]$Platform = 'Windows', [string]$Root)
   Initialize-HelperState
-  Write-Step 'BSS AI Helper 질문형 설치'
+  Write-Step 'ai-boiler-plate 질문형 설치'
   Write-Info '한 번에 전부 설치하지 않고 필요한 항목을 질문으로 확인합니다.'
   Write-Output '1) 상태만 보기'
   Write-Output '2) 1단계 기본 설치 준비'

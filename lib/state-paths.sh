@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
 bss_helper_home() {
-  printf '%s\n' "${BSS_AI_HELPER_HOME:-$HOME/.bss-ai-helper}"
+  if [[ -n "${AI_BOILER_PLATE_HOME:-}" ]]; then
+    printf '%s\n' "$AI_BOILER_PLATE_HOME"
+  elif [[ -n "${BSS_AI_HELPER_HOME:-}" ]]; then
+    printf '%s\n' "$BSS_AI_HELPER_HOME"
+  elif [[ -d "$HOME/.bss-ai-helper" && ! -e "$HOME/.ai-boiler-plate" ]]; then
+    printf '%s\n' "$HOME/.bss-ai-helper"
+  else
+    printf '%s\n' "$HOME/.ai-boiler-plate"
+  fi
 }
 
 bss_state_path() {
@@ -29,6 +37,7 @@ bss_ensure_home() {
 }
 
 helper_home() { bss_helper_home; }
+ai_boiler_plate_home() { bss_helper_home; }
 state_path() { bss_state_path; }
 history_path() { bss_history_path; }
 report_path() { bss_report_path; }

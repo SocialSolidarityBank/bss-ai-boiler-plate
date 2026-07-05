@@ -15,7 +15,7 @@ run_wizard() {
     show_status
     return 0
   fi
-  step "BSS AI Helper 질문형 설치"
+  step "ai-boiler-plate 질문형 설치"
   info "한 번에 전부 설치하지 않고 필요한 항목을 질문으로 확인합니다."
   printf '  1) 상태만 보기\n'
   printf '  2) 1단계 기본 설치 준비\n'

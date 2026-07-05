@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# bss-ai-boilerplate — install the BSS macOS development environment.
-# From nothing → Xcode CLT, Homebrew, runtimes, shell, Docker, AI agents
-# (gajae-code + lazycodex).
+# ai-boiler-plate — install the macOS development environment.
+# From nothing → Xcode CLT, Homebrew, runtimes, shell, Docker, AI agents.
 #
 # Usage:
 #   ./install.sh [options]
-#   BSS_BOILERPLATE_REPO=<repo-url> ./install.sh
+#   AI_BOILER_PLATE_REPO=<repo-url> ./install.sh
+#   BSS_BOILERPLATE_* and STARTER_KIT_* remain deprecated compatibility envs.
 #
 # Options:
 #   --dry-run        Show what would happen, change nothing.
@@ -14,7 +14,7 @@
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
-#   --status         Show saved BSS AI Helper progress and exit.
+#   --status         Show saved ai-boiler-plate progress and exit.
 #   --reset-state    Ask before deleting saved resume state.
 #   --classic        Run the classic step installer.
 #   --wizard         Reserved for the question wizard lanes.
@@ -26,9 +26,9 @@
 #
 set -euo pipefail
 
-REPO_URL="${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/bss-ai-helper.git}}"
-REPO_BRANCH="${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}"
-CLONE_DIR="${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/bss-ai-helper}}"
+REPO_URL="${AI_BOILER_PLATE_REPO:-${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/ai-boiler-plate.git}}}"
+REPO_BRANCH="${AI_BOILER_PLATE_BRANCH:-${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}}"
+CLONE_DIR="${AI_BOILER_PLATE_DIR:-${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/ai-boiler-plate}}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root, or bootstrap by cloning (supports curl | bash).
@@ -42,7 +42,7 @@ resolve_root() {
     fi
   fi
   # Running piped from curl: clone (or update) and hand off.
-  echo "==> Bootstrapping bss-ai-boilerplate into $CLONE_DIR" >&2
+  echo "==> Bootstrapping ai-boiler-plate into $CLONE_DIR" >&2
   if ! command -v git >/dev/null 2>&1; then
     echo "==> git not found; triggering Xcode Command Line Tools install…" >&2
     xcode-select --install 2>/dev/null || true
@@ -78,7 +78,7 @@ KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
 # Step registry
 # ---------------------------------------------------------------------------
 # Note: kept bash-3.2 compatible (macOS ships bash 3.2) — no associative arrays.
-STEP_IDS=(prereqs brew runtimes shell docker git agents)
+STEP_IDS=(prereqs brew runtimes shell docker git agents resume)
 
 # step_file <id> -> the scripts/NN-*.sh filename for that step
 step_file() {
@@ -90,6 +90,7 @@ step_file() {
     docker)   echo 05-docker.sh ;;
     git)      echo 06-git.sh ;;
     agents)   echo 07-agents.sh ;;
+    resume)   echo 09-codex-resume.sh ;;
     *) return 1 ;;
   esac
 }
@@ -117,7 +118,7 @@ while [[ $# -gt 0 ]]; do
     --skip=*)    SKIP="${1#*=}"; DIRECT_MODE=1 ;;
     --no-agents) SKIP="${SKIP:+$SKIP,}agents"; DIRECT_MODE=1 ;;
     --list)      printf '%s\n' "${STEP_IDS[@]}"; exit 0 ;;
-    -V|--version) echo "bss-ai-boilerplate $KIT_VERSION"; exit 0 ;;
+    -V|--version) echo "ai-boiler-plate $KIT_VERSION"; exit 0 ;;
     -h|--help)   usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -179,7 +180,7 @@ is_macos || die "This kit targets macOS only."
 is_arm   || warn "Not Apple Silicon (arm64) — proceeding, but only tested on M-series."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== bss-ai-boilerplate v$KIT_VERSION ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== ai-boiler-plate v$KIT_VERSION ==$_C_RESET"
 info "steps: $(selected | tr '\n' ' ')"
 
 # ---------------------------------------------------------------------------

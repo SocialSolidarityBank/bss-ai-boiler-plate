@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 #
-# bss-ai-boilerplate — uninstaller. Reverses what install.sh set up, in reverse
+# ai-boiler-plate — uninstaller. Reverses what install.sh set up, in reverse
 # dependency order, idempotently. Destructive groups are confirm-gated.
 #
 # What it NEVER removes automatically (too system-wide / your data):
 #   - Homebrew itself, Xcode Command Line Tools
 #   - your git identity / config
-#   - gajae-code (gjc) unless you pass --with-gajae
 #
 # Usage:
 #   ./uninstall.sh [options]
@@ -16,8 +15,7 @@
 #   --yes, -y          Non-interactive: accept every removal prompt.
 #   --only  a,b,c      Run only these groups.
 #   --skip  a,b,c      Run all groups except these.
-#   --with-gajae       Also remove gajae-code (gjc). Refused if gjc is running.
-#   --keep-codex-home  Keep ~/.codex (config/auth/sessions) when removing codex.
+#   --keep-codex-home  Deprecated no-op; runtime/auth roots are always preserved.
 #   --list             List group ids and exit.
 #   --version, -V      Print the kit version and exit.
 #   --help, -h         Show this help.
@@ -32,8 +30,6 @@ ROOT="$SELF_DIR"
 source "$ROOT/scripts/lib.sh"
 
 KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
-: "${WITH_GAJAE:=0}"
-: "${KEEP_CODEX_HOME:=0}"
 
 GROUP_IDS=(agents shell docker runtimes brew)
 
@@ -42,7 +38,7 @@ GROUP_IDS=(agents shell docker runtimes brew)
 usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$ROOT/uninstall.sh"; }
 
 # ---------------------------------------------------------------------------
-# agents — codex + lazycodex + Claude Code (+ optionally gajae-code)
+# agents — codex + lazycodex + Claude Code
 # ---------------------------------------------------------------------------
 undo_agents() {
   step "Remove AI agents (codex + lazycodex + Claude Code)"
@@ -67,29 +63,7 @@ undo_agents() {
   done
   [[ "$found" == 1 ]] && ok "cleared lazycodex npx cache" || info "no lazycodex npx cache"
 
-  # ~/.codex home (config, auth, sessions, omo plugin)
-  if [[ -d "$HOME/.codex" && "$KEEP_CODEX_HOME" != "1" ]]; then
-    if confirm "Remove ~/.codex (codex home: config, auth, sessions, omo plugin)?"; then
-      if [[ -f "$HOME/.codex/auth.json" ]]; then
-        local bak; bak="$HOME/codex-auth-backup-$(date +%Y%m%d-%H%M%S).json"
-        if [[ "$DRY_RUN" == "1" ]]; then
-          info "[dry-run] would back up auth.json -> ${bak/#$HOME/~}"
-        else
-          cp -p "$HOME/.codex/auth.json" "$bak" && ok "backed up auth.json -> ${bak/#$HOME/~}"
-        fi
-      fi
-      run rm -rf "$HOME/.codex"
-    else
-      info "kept ~/.codex"
-    fi
-  fi
-  if [[ -d "$HOME/.cache/codex-runtimes" ]]; then
-    if confirm "Remove ~/.cache/codex-runtimes (downloaded codex runtime, large)?"; then
-      run rm -rf "$HOME/.cache/codex-runtimes"
-    else
-      info "kept ~/.cache/codex-runtimes"
-    fi
-  fi
+  info "Preserving runtime/auth roots: ~/.codex, ~/.cache/codex-runtimes, ~/.claude, ~/.claude.json, ~/.agents, and auth/token/OAuth files"
 
   # Hermes Agent — remove command shim + (confirm) data dir
   if have hermes || [[ -d "$HOME/.hermes" ]]; then
@@ -102,56 +76,17 @@ undo_agents() {
         run rm -f "$tgt"
       fi
     done
-    if [[ -d "$HOME/.hermes" ]]; then
-      if confirm "Remove ~/.hermes (Hermes code, data, sessions)?"; then
-        run rm -rf "$HOME/.hermes"
-      else
-        info "kept ~/.hermes"
-      fi
-    fi
+    [[ -d "$HOME/.hermes" ]] && info "kept ~/.hermes runtime data"
     ok "Hermes Agent removed"
   else
     info "Hermes Agent not installed"
   fi
 
-  # Claude Code — native install is ours, remove it unconditionally
   if [[ -e "$HOME/.local/bin/claude" || -d "$HOME/.local/share/claude" ]]; then
     run rm -f  "$HOME/.local/bin/claude"
-    run rm -rf "$HOME/.local/share/claude"
-    ok "Claude Code removed"
+    ok "Claude Code command removed; runtime data preserved"
   else
     info "Claude Code not installed"
-  fi
-  # user data (settings, history, MCP config, auth) — confirm-gated
-  if [[ -d "$HOME/.claude" || -f "$HOME/.claude.json" ]]; then
-    if confirm "Remove ~/.claude and ~/.claude.json (Claude Code settings, history, auth)?"; then
-      if [[ -f "$HOME/.claude.json" ]]; then
-        local ccbak; ccbak="$HOME/claude-json-backup-$(date +%Y%m%d-%H%M%S).json"
-        if [[ "$DRY_RUN" == "1" ]]; then
-          info "[dry-run] would back up ~/.claude.json -> ${ccbak/#$HOME/~}"
-        else
-          cp -p "$HOME/.claude.json" "$ccbak" && ok "backed up ~/.claude.json -> ${ccbak/#$HOME/~}"
-        fi
-      fi
-      run rm -rf "$HOME/.claude"
-      run rm -f  "$HOME/.claude.json"
-    else
-      info "kept ~/.claude"
-    fi
-  fi
-
-  # gajae-code (gjc) — protected by default
-  if [[ "$WITH_GAJAE" == "1" ]]; then
-    if pgrep -f '/.bun/bin/gjc' >/dev/null 2>&1; then
-      warn "gjc is RUNNING — refusing to remove gajae-code (close the session, then re-run)"
-    elif have gjc; then
-      info "Removing gajae-code…"
-      run bun remove -g gajae-code
-    else
-      info "gajae-code not installed"
-    fi
-  else
-    info "Keeping gajae-code (pass --with-gajae to remove)"
   fi
 }
 
@@ -161,7 +96,7 @@ undo_agents() {
 undo_shell() {
   step "Revert shell configuration"
   local tag
-  for tag in bss-ai-boilerplate lazy-starter-kit macos-starter-kit; do
+  for tag in ai-boiler-plate bss-ai-boilerplate lazy-starter-kit macos-starter-kit; do
     remove_block "$HOME/.zshrc" "$tag:main"
     remove_block "$HOME/.zshrc" "$tag:ohmyzsh"
     remove_block "$HOME/.zprofile" "$tag:brew"
@@ -273,10 +208,9 @@ while [[ $# -gt 0 ]]; do
     --only=*)          ONLY="${1#*=}" ;;
     --skip)            SKIP="${2:-}"; shift ;;
     --skip=*)          SKIP="${1#*=}" ;;
-    --with-gajae)      export WITH_GAJAE=1 ;;
-    --keep-codex-home) export KEEP_CODEX_HOME=1 ;;
+    --keep-codex-home) warn "--keep-codex-home is deprecated: runtime/auth roots are always preserved." ;;
     --list)            printf '%s\n' "${GROUP_IDS[@]}"; exit 0 ;;
-    -V|--version)      echo "bss-ai-boilerplate $KIT_VERSION"; exit 0 ;;
+    -V|--version)      echo "ai-boiler-plate $KIT_VERSION"; exit 0 ;;
     -h|--help)         usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -319,7 +253,7 @@ selected() {
 is_macos || die "macOS only."
 [[ "$DRY_RUN" == "1" ]] && warn "DRY-RUN: no changes will be made."
 
-printf '%s\n' "$_C_BOLD== bss-ai-boilerplate v$KIT_VERSION · uninstall ==$_C_RESET"
+printf '%s\n' "$_C_BOLD== ai-boiler-plate v$KIT_VERSION · uninstall ==$_C_RESET"
 info "groups: $(selected | tr '\n' ' ')"
 warn "Homebrew, Xcode CLT, and your git identity are left untouched (remove manually if desired)."
 

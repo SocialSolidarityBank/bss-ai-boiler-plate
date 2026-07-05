@@ -1,13 +1,13 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  bss-ai-boilerplate -- install the BSS Windows development environment.
+  ai-boiler-plate -- install the Windows development environment.
 
 .DESCRIPTION
   From a fresh machine -> winget packages, runtimes, PowerShell profile, Docker,
-  and AI coding agents (gajae-code + codex + lazycodex).
+  and AI coding agents.
 
-  Steps (in order): prereqs packages runtimes shell docker git agents
+  Steps (in order): prereqs packages runtimes shell docker git agents resume
 
 .PARAMETER DryRun
   Show what would happen, change nothing.
@@ -25,7 +25,8 @@
   Print the kit version and exit.
 
 .EXAMPLE
-  $env:BSS_BOILERPLATE_REPO='<repo-url>'; .\install.ps1
+  $env:AI_BOILER_PLATE_REPO='<repo-url>'; .\install.ps1
+  Deprecated compatibility envs are still read: BSS_BOILERPLATE_* and STARTER_KIT_*.
 
 .EXAMPLE
   .\install.ps1 -DryRun
@@ -56,9 +57,9 @@ $ErrorActionPreference = 'Stop'
 $script:RunFromFile = [bool]$PSCommandPath
 
 $HomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
-$RepoUrl    = if ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/bss-ai-helper.git' }
-$RepoBranch = if ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
-$CloneDir   = if ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'bss-ai-helper' }
+$RepoUrl    = if ($env:AI_BOILER_PLATE_REPO)   { $env:AI_BOILER_PLATE_REPO }   elseif ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/ai-boiler-plate.git' }
+$RepoBranch = if ($env:AI_BOILER_PLATE_BRANCH) { $env:AI_BOILER_PLATE_BRANCH } elseif ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
+$CloneDir   = if ($env:AI_BOILER_PLATE_DIR)    { $env:AI_BOILER_PLATE_DIR }    elseif ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'ai-boiler-plate' }
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the windows\ dir), or bootstrap by cloning.
@@ -68,7 +69,7 @@ function Resolve-Root {
   if (-not $dir) { try { $dir = Split-Path -Parent $MyInvocation.MyCommand.Path } catch {} }
   if ($dir -and (Test-Path (Join-Path $dir 'scripts\lib.ps1'))) { return $dir }
 
-  Write-Host "==> Bootstrapping bss-ai-boilerplate into $CloneDir" -ForegroundColor Blue
+  Write-Host "==> Bootstrapping ai-boiler-plate into $CloneDir" -ForegroundColor Blue
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     # A piped one-liner (irm | iex) needs git to clone the kit. On a fresh
     # machine, install it via winget, then refresh PATH for this session.
@@ -123,7 +124,7 @@ $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
-$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents')
+$StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume')
 $StepFile = @{
   prereqs  = '01-prereqs.ps1'
   packages = '02-packages.ps1'
@@ -132,6 +133,7 @@ $StepFile = @{
   docker   = '05-docker.ps1'
   git      = '06-git.ps1'
   agents   = '07-agents.ps1'
+  resume   = '09-codex-resume.ps1'
 }
 $StepFunc = @{
   prereqs  = 'Step-Prereqs'
@@ -141,11 +143,12 @@ $StepFunc = @{
   docker   = 'Step-Docker'
   git      = 'Step-Git'
   agents   = 'Step-Agents'
+  resume   = 'Step-Resume'
 }
 
 if ($Help)    { Get-Help $target -Detailed;                    if ($script:RunFromFile) { exit 0 } else { return } }
 if ($List)    { $StepIds | ForEach-Object { Write-Output $_ }; if ($script:RunFromFile) { exit 0 } else { return } }
-if ($Version) { Write-Output "bss-ai-boilerplate $KitVersion";    if ($script:RunFromFile) { exit 0 } else { return } }
+if ($Version) { Write-Output "ai-boiler-plate $KitVersion";    if ($script:RunFromFile) { exit 0 } else { return } }
 if ($Status)  { Show-HelperStatus;                              if ($script:RunFromFile) { exit 0 } else { return } }
 if ($ResetState) {
   $state = Get-StatePath
@@ -194,7 +197,7 @@ function Get-SelectedSteps {
 if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
 if ($script:DryRun) { Write-Warn "DRY-RUN: no changes will be made." }
 
-Write-Host "== bss-ai-boilerplate v$KitVersion ==" -ForegroundColor White
+Write-Host "== ai-boiler-plate v$KitVersion ==" -ForegroundColor White
 $selected = @(Get-SelectedSteps)
 Write-Info ("steps: " + ($selected -join ' '))
 
@@ -205,7 +208,12 @@ foreach ($id in $selected) {
   $file = Join-Path $Root ("scripts\" + $StepFile[$id])
   if (-not (Test-Path $file)) { Stop-Kit "missing step file: $file" }
   . $file
-  & $StepFunc[$id]
+  if ($id -eq 'agents') {
+    $agentResult = @(& $StepFunc[$id])
+    if ($agentResult -contains $false) { Stop-Kit "AI agents step did not complete." }
+  } else {
+    & $StepFunc[$id]
+  }
 }
 
 Write-Step "Done."

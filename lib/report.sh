@@ -32,7 +32,7 @@ state_path, report_path, manual_path, history_path = map(Path, sys.argv[1:])
 data = json.loads(state_path.read_text(encoding="utf-8"))
 tools = data.get("tools") or []
 steps = data.get("steps") or {}
-phrases = data.get("restartPhrases") or ["BSS AI Helper 실행해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
+phrases = data.get("restartPhrases") or ["보일러 플레이트 시작해줘", "AI 세팅 이어서 해줘", "개발환경 설치 도와줘"]
 
 def label_tool(tool):
     name = tool.get("name", "이름 없는 도구")
@@ -53,20 +53,19 @@ if not not_installed:
 
 now = dt.datetime.now().astimezone().isoformat(timespec="seconds")
 report_lines = [
-    "# BSS AI Helper 리포트",
+    "# ai-boiler-plate 리포트",
     "",
     f"생성 시각: {now}",
     "",
     "## 처음 시작하기",
-    "먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.",
+    "Claude/Codex 같은 코딩 에이전트 앱을 열고 저장소 링크를 전달한 뒤 다음 문장을 말합니다.",
     "",
-    "```sh",
-    "git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper",
-    "cd ~/bss-ai-helper",
-    "codex",
+    "```text",
+    "https://github.com/socialsolidaritybank/ai-boiler-plate",
+    "보일러 플레이트 시작해줘",
     "```",
     "",
-    "Codex가 열리면 `BSS AI Helper 실행해줘`라고 말합니다.",
+    "터미널 clone/cd/codex 명령은 고급 사용자, QA, 장애 복구용 fallback입니다.",
     "",
     "## 설치한 도구",
     *[label_tool(t) for t in installed],
@@ -77,8 +76,18 @@ report_lines = [
     "## 다시 시작하기",
     *[f"- `{p}`" for p in phrases],
     "",
-    "터미널에서는 `bss-ai-helper`, `ai-helper`, `bss-ai`를 사용할 수 있습니다.",
+    "Deprecated compatibility commands for existing installs: `bss-ai-helper`, `ai-helper`, `bss-ai`.",
 ]
+report_lines.extend([
+    "",
+    "## Business judgment route",
+    "The installer does not decide business viability or commercial judgment questions.",
+    "If setup raises those questions, use a visible/configured G-stack office-hours repo/link first; if none is available, ask the user for that repo/link then.",
+    "",
+    "## Matt Pocock Skills (required)",
+    "Run `npx skills@latest add mattpocock/skills`, then tell your AI agent `/setup-matt-pocock-skills`.",
+    "Do not copy files directly into runtime skill folders; use the installer command or fallback instructions only.",
+])
 report_path.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
 
 def li(items):
@@ -90,7 +99,7 @@ manual = f"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>BSS AI Helper 사용 설명서</title>
+<title>ai-boiler-plate 사용 설명서</title>
 <style>
 body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; max-width: 860px; margin: 0 auto; padding: 32px 20px 72px; color: #17202a; background: #fafafa; }}
 h1, h2 {{ line-height: 1.25; }}
@@ -101,12 +110,11 @@ details {{ border: 1px solid #d8dde6; border-radius: 8px; padding: 12px 14px; ba
 </style>
 </head>
 <body>
-<h1>BSS AI Helper 사용 설명서</h1>
-<p>처음 시작하기: 먼저 GitHub 레포를 clone하고, 정해진 폴더에서 Codex를 실행합니다.</p>
-<pre><code>git clone https://github.com/socialsolidaritybank/bss-ai-helper.git ~/bss-ai-helper
-cd ~/bss-ai-helper
-codex</code></pre>
-<p>Codex가 열리면 <code>BSS AI Helper 실행해줘</code>라고 말합니다. 설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다.</p>
+<h1>ai-boiler-plate 사용 설명서</h1>
+<p>처음 시작하기: Claude/Codex 같은 코딩 에이전트 앱을 열고 저장소 링크를 전달한 뒤 다음 문장을 말합니다.</p>
+<pre><code>https://github.com/socialsolidaritybank/ai-boiler-plate
+보일러 플레이트 시작해줘</code></pre>
+<p>터미널 clone/cd/codex 명령은 고급 사용자, QA, 장애 복구용 fallback입니다. 설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다.</p>
 <section>
 <h2>설치한 도구</h2>
 <ul>
@@ -146,6 +154,21 @@ codex</code></pre>
 </body>
 </html>
 """
+manual = manual.replace(
+    "</body>",
+    "<section><h2>Business judgment route</h2>"
+    "<p>The installer does not decide business viability or commercial judgment questions. "
+    "Use a visible/configured G-stack office-hours repo/link first; if none is available, ask the user for that repo/link then.</p>"
+    "</section>"
+    "<section><h2>Matt Pocock Skills (required)</h2>"
+    "<p><code>npx skills@latest add mattpocock/skills</code> 실행 뒤 AI 에이전트에 "
+    "<code>/setup-matt-pocock-skills</code>를 입력합니다. 런타임 skill 폴더에는 직접 쓰지 않습니다.</p>"
+    "</section>"
+    "<section><h2>Deprecated compatibility</h2>"
+    "<p>Existing installs may still use <code>bss-ai-helper</code>, <code>ai-helper</code>, or "
+    "<code>bss-ai</code> for one release; prefer <code>ai-boiler-plate</code>.</p>"
+    "</section>\n</body>",
+)
 manual_path.write_text(manual, encoding="utf-8")
 
 history_path.parent.mkdir(parents=True, exist_ok=True)

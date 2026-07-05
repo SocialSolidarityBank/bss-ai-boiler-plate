@@ -11,11 +11,16 @@ combined="$(cat "${docs[@]}")"
 case "$mode" in
   first-run)
     {
-      assert_contains "$combined" 'socialsolidaritybank/bss-ai-helper'
-      assert_contains "$combined" 'BSS AI Helper 실행해줘'
-      assert_contains "$combined" 'codex'
-      assert_contains "$combined" '~/bss-ai-helper'
+      assert_contains "$combined" 'socialsolidaritybank/ai-boiler-plate'
+      assert_contains "$combined" '보일러 플레이트 시작해줘'
+      assert_contains "$combined" 'Claude'
+      assert_contains "$combined" 'Codex'
+      assert_contains "$combined" 'repo link'
       assert_contains "$combined" 'foxion37/lazy-starter-kit'
+      assert_contains "$combined" 'business viability'
+      assert_contains "$combined" 'G-stack office-hours repo/link'
+      assert_contains "$combined" 'npx skills@latest add mattpocock/skills'
+      assert_contains "$combined" '/setup-matt-pocock-skills'
       assert_contains "$combined" '포크'
       printf 'docs first-run content present\n'
     } > "$evidence" 2>&1 || { cat "$evidence" >&2; exit 1; }
@@ -30,6 +35,7 @@ case "$mode" in
     if grep -R "Docker.*기본.*설치" "${docs[@]}" >> "$evidence" 2>&1; then
       fail "docs imply Docker is part of the non-developer default; see $evidence"
     fi
+    assert_contains "$combined" 'optional|선택|명시적으로 선택'
     note "PASS G011-NONDEV $evidence"
     ;;
   advanced)
@@ -39,6 +45,7 @@ case "$mode" in
       assert_contains "$combined" '--dry-run'
       assert_contains "$combined" '--list'
       assert_contains "$combined" 'windows/install.ps1'
+      assert_contains "$combined" 'deprecated|호환'
       printf 'docs advanced content present\n'
     } > "$evidence" 2>&1 || { cat "$evidence" >&2; exit 1; }
     note "PASS G011-ADVANCED $evidence"

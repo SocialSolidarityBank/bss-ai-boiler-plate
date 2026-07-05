@@ -13,7 +13,7 @@ function Step-Docker {
   Write-Warn "LICENSING: Docker Desktop is PAID for larger orgs (>250 employees OR >`$10M revenue)."
   Write-Info "Free alternative (recommended for work machines): run Docker/Podman INSIDE WSL2:"
   Write-Info "  wsl --install; then in the WSL distro:  curl -fsSL https://get.docker.com | sh"
-  Write-Info "(Running the bss-ai-boilerplate Linux installer inside WSL sets this up for you.)"
+  Write-Info "(Running the ai-boiler-plate Linux installer inside WSL sets this up for you.)"
 
   if ($script:DryRun) {
     Write-Info "[dry-run] (optional) winget install --id Docker.DockerDesktop -e (large; reboot likely required)"
