@@ -49,9 +49,9 @@ wizard_step_addons() {
   step "4단계 추가 도구 추천"
   printf '원하는 도움에 가까운 항목을 고르세요.\n'
   printf '1) 강한 오케스트레이션, 멀티 서브 에이전트\n'
-  printf '2) 질문 항목을 하나씩 설계해주는 선생님\n'
+  printf '2) 버그 수정/완료 검증 습관 보강\n'
   printf '3) Codex로 긴 자동 설치/수정 작업\n'
-  printf '4) 고급 터미널 도구\n'
+  printf '4) 고급 품질 워크플로우\n'
   printf '5) 추천 없이 마치기\n'
   choice="$(_wizard_choice '선택:' 5)"
   case "$choice" in

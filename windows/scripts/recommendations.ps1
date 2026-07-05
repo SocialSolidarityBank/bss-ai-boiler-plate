@@ -1,10 +1,10 @@
-function Get-RecommendationTitle {
+﻿function Get-RecommendationTitle {
   param([string]$Id)
   switch ($Id) {
     'matt-pocock-skills' { 'Matt Pocock Skills' }
     'lazy-codex' { 'Lazy-Codex' }
     'oh-my-claudecode' { 'oh-my-claudecode' }
-    'superpowers' { 'Superpowers' }
+    'superpowers' { 'Superpowers Debug/Verify Pack' }
     default { $Id }
   }
 }
@@ -15,7 +15,12 @@ function Get-RecommendationInstallCommand {
     'matt-pocock-skills' { 'npx skills@latest add mattpocock/skills' }
     'lazy-codex' { 'npx --yes lazycodex-ai install' }
     'oh-my-claudecode' { 'npm install -g oh-my-claude-sisyphus@latest' }
-    'superpowers' { 'status-only' }
+    'superpowers' {
+      @(
+        'npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging',
+        'npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion'
+      )
+    }
     default { $null }
   }
 }
@@ -75,10 +80,12 @@ function Show-RecommendationCard {
       if ($Details) { Write-Output '자세히 보기: Lazy-Codex는 Codex CLI 위에서 작업 목표와 검증 기록을 더 엄격하게 관리하는 도구입니다.' }
     }
     'superpowers' {
-      Write-Output '좋은 경우: 기본 품질/계획 플러그인 상태를 확인하고 싶을 때'
-      Write-Output '강점: 작업 계획과 검증 습관을 보강합니다.'
-      Write-Output '주의: 이 도우미에서는 추가 설치가 아니라 상태 확인 항목입니다.'
-      if ($Details) { Write-Output '자세히 보기: Superpowers는 별도 add-on 설치가 아니라 기본 품질 확인 대상으로 둡니다.' }
+      Write-Output 'Good for: stricter bug fixing and completion checks.'
+      Write-Output 'Strength: installs systematic-debugging and verification-before-completion only.'
+      Write-Output 'Note: optional add-on, installed only after explicit opt-in. Full Superpowers workflow/plugin stays advanced and manual.'
+      Write-Output 'Install command 1: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging'
+      Write-Output 'Install command 2: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion'
+      if ($Details) { Write-Output 'Details: install the full plugin manually with /plugin install superpowers@claude-plugins-official in Claude Code, or search Superpowers in the Codex plugin marketplace. Set SUPERPOWERS_DISABLE_TELEMETRY=true if needed.' }
     }
     default {
       Write-Output '좋은 경우: 선택한 AI 도구를 더 깊게 써보고 싶을 때'

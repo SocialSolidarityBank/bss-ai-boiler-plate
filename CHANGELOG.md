@@ -7,6 +7,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Optional Superpowers Debug/Verify Pack recommendation, installing only the
+  `systematic-debugging` and `verification-before-completion` skills after
+  explicit user opt-in while keeping the full Superpowers workflow/plugin as an
+  advanced manual option.
+
 ## [1.0.0] - 2026-07-05
 
 ### Added

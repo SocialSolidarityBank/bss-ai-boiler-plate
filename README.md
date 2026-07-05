@@ -41,7 +41,7 @@ Then ask your Claude/Codex agent:
 /setup-matt-pocock-skills
 ```
 
-LazyCodex, oh-my-claudecode, Hermes, and similar add-ons stay optional and are installed only after explicit opt-in.
+LazyCodex, oh-my-claudecode, Hermes, and Superpowers stay optional and are installed only after explicit opt-in. The default Superpowers option is a small Debug/Verify Pack (`systematic-debugging` and `verification-before-completion`); the full Superpowers workflow remains an advanced manual plugin choice.
 
 ## 지원 범위
 

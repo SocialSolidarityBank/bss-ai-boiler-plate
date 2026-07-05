@@ -64,7 +64,7 @@ If `winget` is missing, install *App Installer* from the Microsoft Store first.
 | **Runtimes** | **mise** → node (LTS), python, go, **ast-grep** · **rustup** → rust + rust-analyzer · **uv** · **bun** |
 | **Containers** | **Docker Desktop** (optional; needs WSL2/virtualization) |
 | **Git/GitHub** | identity (GitHub noreply email), HTTPS credential helper, `core.autocrlf`, sane defaults |
-| **AI agents** | **Claude Code** (`claude`), **codex**, required Matt Pocock Skills, optional **lazycodex** (OmO). Hermes Agent runs inside WSL2. |
+| **AI agents** | **Claude Code** (`claude`), **codex**, required Matt Pocock Skills, optional **lazycodex** (OmO), optional Superpowers Debug/Verify Pack. Hermes Agent runs inside WSL2. |
 
 ## Steps & flags
 
@@ -109,6 +109,10 @@ re-runs. Existing files you own are preserved.
   with `Get-Command node -All`.
 - **Hermes Agent** has no native Windows build — install it inside a WSL2 distro:
   `wsl bash -c 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup'`
+- **Superpowers Debug/Verify Pack** is optional and installs only when selected:
+  `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging`
+  then
+  `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion`.
 
 ## Uninstall
 

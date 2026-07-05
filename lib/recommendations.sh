@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 recommendation_title() {
   case "$1" in
-    superpowers) echo "Superpowers" ;;
+    superpowers) echo "Superpowers Debug/Verify Pack" ;;
     matt-pocock-skills) echo "Matt Pocock Skills" ;;
     lazy-codex) echo "Lazy-Codex" ;;
     oh-my-claudecode) echo "oh-my-claudecode" ;;
@@ -14,7 +14,7 @@ recommendation_install_command() {
     matt-pocock-skills) echo "npx skills@latest add mattpocock/skills" ;;
     lazy-codex) echo "npx --yes lazycodex-ai install" ;;
     oh-my-claudecode) echo "npm install -g oh-my-claude-sisyphus@latest" ;;
-    superpowers) echo "status-only" ;;
+    superpowers) echo "npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging && npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion" ;;
     *) return 1 ;;
   esac
 }
@@ -75,10 +75,11 @@ recommendation_show_card() {
       [[ "$details" == "1" ]] && printf '자세히 보기: oh-my-claudecode는 Claude Code 설정과 오케스트레이션을 보강하는 외부 도구입니다.\n'
       ;;
     superpowers)
-      printf '좋은 경우: 기본 품질/계획 플러그인 상태를 확인하고 싶을 때\n'
-      printf '강점: 작업 계획과 검증 습관을 보강합니다.\n'
-      printf '주의: 이 도우미에서는 추가 설치가 아니라 상태 확인 항목입니다.\n'
-      [[ "$details" == "1" ]] && printf '자세히 보기: Superpowers는 별도 add-on 설치가 아니라 기본 품질 확인 대상으로 둡니다.\n'
+      printf '좋은 경우: 버그 수정과 완료 선언을 더 엄격하게 확인하고 싶을 때\n'
+      printf '강점: systematic-debugging, verification-before-completion으로 추측 수정을 줄이고 검증 증거를 남깁니다.\n'
+      printf '주의: 선택한 뒤에만 설치하는 선택 add-on입니다. 전체 Superpowers workflow는 고급 수동 옵션으로 둡니다.\n'
+      printf '설치 명령: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging && npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion\n'
+      [[ "$details" == "1" ]] && printf '자세히 보기: 전체 플러그인은 Claude Code에서 /plugin install superpowers@claude-plugins-official 또는 Codex 플러그인 마켓플레이스에서 Superpowers를 검색해 설치합니다. 필요하면 SUPERPOWERS_DISABLE_TELEMETRY=true를 설정하세요.\n'
       ;;
   esac
   printf '직접 설치해드릴까요?\n'
@@ -96,7 +97,7 @@ recommendation_show_details() {
       printf '자세히 보기: oh-my-claudecode는 Claude Code 설정과 오케스트레이션을 보강하는 외부 도구입니다.\n'
       ;;
     superpowers)
-      printf '자세히 보기: Superpowers는 별도 add-on 설치가 아니라 기본 품질 확인 대상으로 둡니다.\n'
+      printf '자세히 보기: Debug/Verify Pack은 systematic-debugging과 verification-before-completion만 설치합니다. 전체 Superpowers workflow는 작업 방식 전체를 바꾸므로 고급 수동 옵션으로 둡니다.\n'
       ;;
   esac
 }

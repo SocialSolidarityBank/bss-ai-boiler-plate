@@ -10,7 +10,8 @@
 - 에이전트는 한 번에 하나의 질문만 하며 상태를 저장하고 이어서 진행한다.
 - PowerShell이나 터미널은 fallback, 고급 사용자, QA 확인용으로만 안내한다.
 - Matt Pocock Skills setup은 필수로 안내한다.
-- LazyCodex, oh-my-claudecode, Hermes 같은 add-on은 사용자가 명시적으로 선택할 때만 설치한다.
+- LazyCodex, oh-my-claudecode, Hermes, Superpowers 같은 add-on은 사용자가 명시적으로 선택할 때만 설치한다.
+- Superpowers를 선택하면 초보자 기본값은 Debug/Verify Pack만 설치하고, 전체 workflow/plugin은 고급 수동 옵션으로 안내한다.
 - 사업성, 상업적 판단, 고객 가치 검증 질문은 보이는 G-stack office-hours repo/link를 먼저 쓰고, 없을 때만 사용자에게 물어본다.
 - 비밀번호, 토큰, OAuth 코드, 런타임 홈 인증 파일은 저장하거나 수정하지 않는다.
 

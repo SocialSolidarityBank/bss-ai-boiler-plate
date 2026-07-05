@@ -67,10 +67,12 @@ function Invoke-AddonsStep {
   $state = Read-HelperState
   $services = @($state['ai_services'])
   Write-Output '1) 강한 오케스트레이션, 멀티 서브 에이전트'
-  Write-Output '2) Superpowers 상태 확인'
+  Write-Output '2) 버그 수정/완료 검증 습관 보강'
+  Write-Output '3) Codex로 긴 자동 설치/수정 작업'
+  Write-Output '4) 고급 품질 워크플로우'
   Write-Output '5) 추천 없이 마치기'
   $choice = Read-WizardChoice -Prompt '선택:' -Default '5'
-  $preference = if ($choice -eq '1') { 'orchestration' } elseif ($choice -eq '2') { 'quality' } else { 'none' }
+  $preference = if ($choice -eq '1') { 'orchestration' } elseif ($choice -eq '2') { 'teacher' } elseif ($choice -eq '3') { 'long-work' } elseif ($choice -eq '4') { 'quality' } else { 'none' }
   $candidates = @(Get-RecommendationCandidates -Services $services -Preference $preference)
   $id = Get-RecommendationPick -Services $services -Preference $preference
   if (-not $id -and $candidates.Count -gt 0) { $id = $candidates[0] }
@@ -126,9 +128,9 @@ function Invoke-AddonsStep {
 
 function Invoke-AddonInstall {
   param([string]$Id, [string]$Title)
-  $cmd = Get-RecommendationInstallCommand -Id $Id
+  $commands = @(Get-RecommendationInstallCommand -Id $Id)
   while ($true) {
-    if ($cmd -eq 'status-only') {
+    if ($commands.Count -eq 1 -and $commands[0] -eq 'status-only') {
       Write-Info "$Title은 추가 설치가 아니라 상태 확인 항목입니다."
       Set-AddonStatus -Id $Id -Title $Title -Status 'skipped' -Note 'status-only'
       return 'skipped'
@@ -144,12 +146,19 @@ function Invoke-AddonInstall {
       continue
     }
     if ($script:DryRun) {
-      Write-Info "[dry-run] would run: $cmd"
+      foreach ($cmd in $commands) { Write-Info "[dry-run] would run: $cmd" }
       Set-AddonStatus -Id $Id -Title $Title -Status 'complete' -Note 'dry-run install approved'
       return 'complete'
     }
-    & cmd.exe /c $cmd
-    if ($LASTEXITCODE -eq 0) {
+    $ok = $true
+    foreach ($cmd in $commands) {
+      & cmd.exe /c $cmd
+      if ($LASTEXITCODE -ne 0) {
+        $ok = $false
+        break
+      }
+    }
+    if ($ok) {
       Set-AddonStatus -Id $Id -Title $Title -Status 'complete' -Note 'installed'
       return 'complete'
     }

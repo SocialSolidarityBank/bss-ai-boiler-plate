@@ -87,6 +87,10 @@ report_lines.extend([
     "## Matt Pocock Skills (required)",
     "Run `npx skills@latest add mattpocock/skills`, then tell your AI agent `/setup-matt-pocock-skills`.",
     "Do not copy files directly into runtime skill folders; use the installer command or fallback instructions only.",
+    "",
+    "## Superpowers Debug/Verify Pack (optional)",
+    "Install only after explicit opt-in: `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging` and `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion`.",
+    "The full Superpowers workflow/plugin is an advanced manual option; keep it separate from the default boilerplate flow.",
 ])
 report_path.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
 
@@ -163,6 +167,10 @@ manual = manual.replace(
     "<section><h2>Matt Pocock Skills (required)</h2>"
     "<p><code>npx skills@latest add mattpocock/skills</code> 실행 뒤 AI 에이전트에 "
     "<code>/setup-matt-pocock-skills</code>를 입력합니다. 런타임 skill 폴더에는 직접 쓰지 않습니다.</p>"
+    "</section>"
+    "<section><h2>Superpowers Debug/Verify Pack (optional)</h2>"
+    "<p>명시적으로 선택했을 때만 <code>systematic-debugging</code>과 "
+    "<code>verification-before-completion</code>을 설치합니다. 전체 Superpowers workflow/plugin은 고급 수동 옵션입니다.</p>"
     "</section>"
     "<section><h2>Deprecated compatibility</h2>"
     "<p>Existing installs may still use <code>bss-ai-helper</code>, <code>ai-helper</code>, or "

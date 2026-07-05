@@ -50,6 +50,7 @@ v1 keeps the original lazy-starter-kit base environment and changes only the age
 - Product identity: `ai-boiler-plate`
 - Entry point: Claude/Codex agent app with `보일러 플레이트 시작해줘`
 - Required skill: Matt Pocock Skills
-- Optional add-ons: LazyCodex, oh-my-claudecode, Hermes/Superpowers-style checks where supported
+- Optional add-ons: LazyCodex, oh-my-claudecode, Hermes, and a Superpowers Debug/Verify Pack where supported
+- Advanced manual add-on: full Superpowers workflow/plugin, only after explicit user opt-in
 - Removed plugin: gajae-code / `gjc`
 - Business-judgment route: visible/configured G-stack office-hours first, ask for the link only when absent

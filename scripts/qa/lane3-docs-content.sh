@@ -21,6 +21,9 @@ case "$mode" in
       assert_contains "$combined" 'G-stack office-hours repo/link'
       assert_contains "$combined" 'npx skills@latest add mattpocock/skills'
       assert_contains "$combined" '/setup-matt-pocock-skills'
+      assert_contains "$combined" 'Superpowers Debug/Verify'
+      assert_contains "$combined" 'systematic-debugging'
+      assert_contains "$combined" 'verification-before-completion'
       assert_contains "$combined" '포크'
       printf 'docs first-run content present\n'
     } > "$evidence" 2>&1 || { cat "$evidence" >&2; exit 1; }

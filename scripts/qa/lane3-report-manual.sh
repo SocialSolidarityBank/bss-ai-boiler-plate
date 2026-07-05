@@ -42,11 +42,17 @@ assert_contains "$report" 'does not decide business viability'
 assert_contains "$report" 'G-stack office-hours repo/link'
 assert_contains "$report" 'npx skills@latest add mattpocock/skills'
 assert_contains "$report" '/setup-matt-pocock-skills'
+assert_contains "$report" 'Superpowers Debug/Verify Pack'
+assert_contains "$report" 'systematic-debugging'
+assert_contains "$report" 'verification-before-completion'
 assert_contains "$manual" 'Business judgment route'
 assert_contains "$manual" 'does not decide business viability'
 assert_contains "$manual" 'G-stack office-hours repo/link'
 assert_contains "$manual" 'npx skills@latest add mattpocock/skills'
 assert_contains "$manual" '/setup-matt-pocock-skills'
+assert_contains "$manual" 'Superpowers Debug/Verify Pack'
+assert_contains "$manual" 'systematic-debugging'
+assert_contains "$manual" 'verification-before-completion'
 
 case "$mode" in
   failed-addon)
