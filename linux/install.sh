@@ -67,6 +67,8 @@ resolve_root() {
 }
 
 ROOT="$(resolve_root)"
+LINUX_ROOT="$ROOT"
+KIT_ROOT="$(cd "$LINUX_ROOT/.." && pwd)"
 # Resolve this script's own absolute path (empty when piped from curl).
 SELF=""
 if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
@@ -78,11 +80,11 @@ if [[ "$SELF" != "$ROOT/install.sh" && -f "$ROOT/install.sh" ]]; then
 fi
 
 # shellcheck source=scripts/lib.sh
-source "$ROOT/scripts/lib.sh"
-source "$ROOT/../lib/wizard.sh"
-source "$ROOT/../lib/state.sh"
+source "$LINUX_ROOT/scripts/lib.sh"
+source "$KIT_ROOT/lib/wizard.sh"
+source "$KIT_ROOT/lib/state.sh"
 
-KIT_VERSION="$(cat "$ROOT/../VERSION" 2>/dev/null || echo dev)"
+KIT_VERSION="$(cat "$KIT_ROOT/VERSION" 2>/dev/null || echo dev)"
 
 # ---------------------------------------------------------------------------
 # Step registry
@@ -106,7 +108,7 @@ step_file() {
 
 # usage — print the leading comment block (skip the shebang, stop at the first
 # non-comment line) so --help never leaks code that follows the header.
-usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$ROOT/install.sh"; }
+usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$LINUX_ROOT/install.sh"; }
 
 # ---------------------------------------------------------------------------
 # Arg parsing
@@ -189,7 +191,7 @@ selected() {
 }
 
 generate_completion_report() {
-  local report_lib="$ROOT/../lib/report.sh"
+  local report_lib="$KIT_ROOT/lib/report.sh"
   if [[ ! -f "$report_lib" ]]; then
     warn "설치 결과 리포트 생성기를 찾지 못했습니다: $report_lib"
     return 0
@@ -247,7 +249,7 @@ info "steps: $(selected | tr '\n' ' ')"
 # Execute
 # ---------------------------------------------------------------------------
 for id in $(selected); do
-  file="$ROOT/scripts/$(step_file "$id")"
+  file="$LINUX_ROOT/scripts/$(step_file "$id")"
   fn="step_$id"
   [[ -f "$file" ]] || die "missing step file: $file"
   # shellcheck disable=SC1090
