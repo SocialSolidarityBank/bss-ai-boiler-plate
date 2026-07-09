@@ -22,6 +22,7 @@ SH
     chmod +x "$fake_bin/skill-add"
     BSS_QA_SKILL_ADD_LOG="$work/skill-add.log" run_and_capture "$evidence" env \
       HOME="$fake_home" \
+      AI_BOILER_PLATE_HOME="$helper_home" \
       BSS_AI_HELPER_HOME="$helper_home" \
       BSS_QA_SKILL_ADD_LOG="$work/skill-add.log" \
       PATH="$fake_bin:$PATH" \
@@ -44,6 +45,7 @@ SH
     evidence="$EVIDENCE_DIR/g009-codex-surface-fallback-green.txt"
     run_and_capture "$evidence" env \
       HOME="$fake_home" \
+      AI_BOILER_PLATE_HOME="$helper_home" \
       BSS_AI_HELPER_HOME="$helper_home" \
       PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
       "$ROOT/scripts/09-codex-resume.sh" --install || fail "codex fallback failed; see $evidence"

@@ -15,7 +15,7 @@ case "$mode" in
 esac
 
 write_sample_state "$state_path" "$variant"
-run_and_capture "$evidence" env BSS_AI_HELPER_HOME="$helper_home" "$ROOT/scripts/10-report.sh" --generate || fail "report/manual generation failed; see $evidence"
+run_and_capture "$evidence" env AI_BOILER_PLATE_HOME="$helper_home" BSS_AI_HELPER_HOME="$helper_home" "$ROOT/scripts/10-report.sh" --generate || fail "report/manual generation failed; see $evidence"
 
 report="$helper_home/latest-report.md"
 manual="$helper_home/manual/index.html"
