@@ -344,7 +344,8 @@ jobs:
 
       - name: uninstall (teardown)
         shell: pwsh
-        run: .\windows\uninstall.ps1 -Yes
+        timeout-minutes: 5
+        run: .\windows\uninstall.ps1 -Yes -Only agents,shell
 
       - name: verify removed
         shell: pwsh
