@@ -289,6 +289,7 @@ jobs:
 
       - name: verify installed
         shell: pwsh
+        timeout-minutes: 5
         run: |
           $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
                       [Environment]::GetEnvironmentVariable('Path','User') + ';' +
@@ -299,12 +300,19 @@ jobs:
             else { Write-Host "MISS $c"; $script:fail = 1 }
           }
           foreach ($t in 'git','gh','jq','rg','fd','bat','fzf','starship','mise','uv','rustup','bun') { need $t }
-          & mise reshim 2>$null
+          $shimDir = Join-Path $env:LOCALAPPDATA 'mise\shims'
           foreach ($t in 'node','go','python') {
-            $p = (& mise which $t 2>$null)
-            if ($p) { Write-Host "ok   mise:$t" } else { Write-Host "warn mise:$t not resolved" }
+            $candidates = @(
+              (Join-Path $shimDir "$t.exe"),
+              (Join-Path $shimDir "$t.cmd"),
+              (Join-Path $shimDir $t)
+            )
+            if ($candidates | Where-Object { Test-Path $_ }) {
+              Write-Host "ok   mise shim:$t"
+            } else {
+              Write-Host "warn mise shim:$t not found"
+            }
           }
-          & mise reshim 2>$null
           $env:Path += ";$env:LOCALAPPDATA\mise\shims;$env:USERPROFILE\.bun\bin;$env:USERPROFILE\.local\bin"
           foreach ($t in 'codex','claude') {
             if (Get-Command $t -ErrorAction SilentlyContinue) { Write-Host "ok   $t" }
