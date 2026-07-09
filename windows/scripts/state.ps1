@@ -108,9 +108,9 @@ function Add-AiService {
   $state['ai_services'] = $serviceList
   $state['aiServices'] = $serviceList
   foreach ($service in $state['ai_services']) {
-    if ($service -eq 'Codex') {
+    if ($service -in @('Codex', 'Codex CLI')) {
       Set-ToolInState -State $state -Name 'Codex CLI' -Status 'complete' -Kind 'ai'
-    } elseif ($service -eq 'Claude') {
+    } elseif ($service -in @('Claude', 'Claude Code CLI')) {
       Set-ToolInState -State $state -Name 'Claude Code' -Status 'complete' -Kind 'ai'
     } else {
       Set-ToolInState -State $state -Name $service -Status 'recorded' -Kind 'ai' -Reason '자동 설치 없음'
@@ -150,9 +150,9 @@ function Set-AiServiceStatus {
   param([string[]]$Services, [string]$Status, [string]$Reason = '')
   $state = Read-HelperState
   foreach ($service in @($Services | Where-Object { $_ })) {
-    if ($service -eq 'Codex') {
+    if ($service -in @('Codex', 'Codex CLI')) {
       Set-ToolInState -State $state -Name 'Codex CLI' -Status $Status -Kind 'ai' -Reason $Reason
-    } elseif ($service -eq 'Claude') {
+    } elseif ($service -in @('Claude', 'Claude Code CLI')) {
       Set-ToolInState -State $state -Name 'Claude Code' -Status $Status -Kind 'ai' -Reason $Reason
     } else {
       Set-ToolInState -State $state -Name $service -Status $Status -Kind 'ai' -Reason $Reason

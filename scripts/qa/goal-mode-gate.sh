@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+mode="${1:---quick}"
+case "$mode" in
+  --quick|quick|"") mode="quick" ;;
+  --full|full) mode="full" ;;
+  --spec|spec) mode="spec" ;;
+  -h|--help)
+    printf 'Usage: scripts/qa/goal-mode-gate.sh [--quick|--full|--spec]\n'
+    printf '  --quick  Spec contract + syntax + focused beginner workflow QA.\n'
+    printf '  --full   Quick gate + full lane3-all QA.\n'
+    printf '  --spec   Spec contract only.\n'
+    exit 0
+    ;;
+  *) fail "unknown mode: $mode" ;;
+esac
+
+goal_fail() {
+  printf 'FAIL GOAL-GATE: %s\n' "$*" >&2
+  printf 'Do not produce final/completion output. Fix the failing contract, then rerun this gate.\n' >&2
+  exit 1
+}
+
+contains_file() {
+  local file="$1" pattern="$2" label="$3"
+  [[ -f "$file" ]] || goal_fail "missing required file: $file"
+  grep -Eq -- "$pattern" "$file" || goal_fail "$label ($file)"
+}
+
+not_contains_file() {
+  local file="$1" pattern="$2" label="$3"
+  [[ -f "$file" ]] || goal_fail "missing required file: $file"
+  if grep -Eq -- "$pattern" "$file"; then
+    goal_fail "$label ($file)"
+  fi
+}
+
+run_gate_cmd() {
+  local label="$1" evidence="$2"
+  shift 2
+  if "$@" > "$evidence" 2>&1; then
+    note "PASS GOAL-GATE ${label} ${evidence}"
+  else
+    sed -n '1,220p' "$evidence" >&2 || true
+    goal_fail "$label failed; see $evidence"
+  fi
+}
+
+to_windows_path() {
+  local path="$1"
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$path"
+  elif command -v wslpath >/dev/null 2>&1; then
+    wslpath -w "$path"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+check_powershell_parser() {
+  local evidence="$EVIDENCE_DIR/goal-gate-powershell-parser.txt"
+  if command -v pwsh >/dev/null 2>&1; then
+    local ps_root="$ROOT/windows"
+    pwsh -NoProfile -Command "\$ErrorActionPreference='Stop'; \$files = @(Get-ChildItem -Path '$ps_root' -Recurse -Include *.ps1); foreach (\$file in \$files) { \$tokens=\$null; \$errors=\$null; [System.Management.Automation.Language.Parser]::ParseFile(\$file.FullName, [ref]\$tokens, [ref]\$errors) | Out-Null; if (\$errors.Count -gt 0) { throw (\"{0}: {1}\" -f \$file.FullName, (\$errors | Select-Object -First 1).Message) } }; \"FILES_PARSED: \$([int]\$files.Count)\"" > "$evidence" 2>&1
+    note "PASS GOAL-GATE powershell-parser $evidence"
+    return
+  fi
+
+  if command -v powershell.exe >/dev/null 2>&1; then
+    local win_root ps_root
+    win_root="$(to_windows_path "$ROOT/windows")"
+    ps_root="${win_root//\'/\'\'}"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "\$ErrorActionPreference='Stop'; \$files = @(Get-ChildItem -Path '$ps_root' -Recurse -Include *.ps1); foreach (\$file in \$files) { \$tokens=\$null; \$errors=\$null; [System.Management.Automation.Language.Parser]::ParseFile(\$file.FullName, [ref]\$tokens, [ref]\$errors) | Out-Null; if (\$errors.Count -gt 0) { throw (\"{0}: {1}\" -f \$file.FullName, (\$errors | Select-Object -First 1).Message) } }; \"FILES_PARSED: \$([int]\$files.Count)\"" > "$evidence" 2>&1
+    note "PASS GOAL-GATE winpowershell-parser $evidence"
+    return
+  fi
+
+  printf 'SKIP GOAL-GATE powershell-parser: PowerShell is not available.\n' > "$evidence"
+  note "SKIP GOAL-GATE powershell-parser $evidence"
+}
+
+check_spec_contract() {
+  contains_file "$ROOT/AGENTS.md" 'Goal Gate\(목표 게이트\)' 'AGENTS.md must force the Goal Gate before final output'
+  contains_file "$ROOT/AGENTS.md" 'scripts/qa/goal-mode-gate\.sh --quick' 'AGENTS.md must name the quick gate command'
+  contains_file "$ROOT/AGENTS.md" 'Do not produce final/completion output|최종 완료 답변' 'AGENTS.md must block completion output on gate failure'
+  contains_file "$ROOT/docs/goal-mode-quality-gate.md" '/goal' 'Goal mode documentation must describe /goal usage'
+  contains_file "$ROOT/docs/goal-mode-quality-gate.md" 'scripts/qa/goal-mode-gate\.sh --full' 'Goal mode documentation must include the full gate'
+  contains_file "$ROOT/.githooks/pre-commit" 'goal-mode-gate\.sh.*--quick' 'pre-commit must run the quick gate'
+  contains_file "$ROOT/.githooks/pre-push" 'goal-mode-gate\.sh.*--full' 'pre-push must run the full gate'
+  contains_file "$ROOT/README.md" 'Goal Gate\(목표 게이트\)' 'README must link the Goal Gate'
+  contains_file "$ROOT/.github/workflows/ci.yml" 'goal-mode-gate\.sh --quick' 'CI must run the Goal Gate'
+
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" '설치해줘' 'Beginner standard must accept short install prompts'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" '설치 시작해줘' 'Beginner standard must accept short start prompts'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" '1\) Windows' 'Beginner standard OS question must include Windows'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" '2\) Linux' 'Beginner standard OS question must include Linux'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" '기본 환경을 전체 설치할까요' 'Beginner basic environment question must be simplified'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" 'Codex CLI 설치' 'AI tools must ask about Codex CLI'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" 'Claude Code CLI 설치' 'AI tools must ask about Claude Code CLI'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" 'Final Installation Plan\(최종 설치 계획\)' 'Final Installation Plan must be required'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" '승인.*진행|진행.*승인' 'Approval words must be documented'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" 'latest-report\.md' 'Install completion report must be documented'
+  contains_file "$ROOT/docs/team-beginner-standard-install.md" 'manual/index\.html' 'HTML manual must be documented'
+
+  contains_file "$ROOT/install.sh" 'generate_completion_report' 'macOS/root installer must generate the completion report'
+  contains_file "$ROOT/linux/install.sh" 'generate_completion_report' 'Linux installer must generate the completion report'
+  contains_file "$ROOT/windows/install.ps1" 'Write-CompletionReport' 'Windows installer must generate the completion report'
+  contains_file "$ROOT/lib/report.sh" 'Pretendard' 'Bash HTML manual must prefer Pretendard'
+  contains_file "$ROOT/windows/scripts/report.ps1" 'Pretendard' 'Windows HTML manual must prefer Pretendard'
+  contains_file "$ROOT/lib/report.sh" '--blue: #0057ff' 'Bash HTML manual must use the approved blue'
+  contains_file "$ROOT/windows/scripts/report.ps1" '--blue: #0057ff' 'Windows HTML manual must use the approved blue'
+  contains_file "$ROOT/lib/report.sh" 'border-radius: 16px' 'Bash HTML manual must use rounded surfaces'
+  contains_file "$ROOT/windows/scripts/report.ps1" 'border-radius: 16px' 'Windows HTML manual must use rounded surfaces'
+
+  contains_file "$ROOT/lib/recommendations.sh" 'Superpowers Planning Pack' 'Superpowers must be mapped as a planning pack'
+  contains_file "$ROOT/windows/scripts/recommendations.ps1" 'Superpowers Planning Pack' 'Windows Superpowers must be mapped as a planning pack'
+  not_contains_file "$ROOT/lib/recommendations.sh" 'Debug/Verify Pack|systematic-debugging|verification-before-completion' 'Bash recommendations must not use the retired Superpowers debug pack'
+  not_contains_file "$ROOT/windows/scripts/recommendations.ps1" 'Debug/Verify Pack|systematic-debugging|verification-before-completion' 'Windows recommendations must not use the retired Superpowers debug pack'
+
+  note "PASS GOAL-GATE spec-contract"
+}
+
+check_bash_syntax() {
+  bash -n \
+    "$ROOT/install.sh" \
+    "$ROOT/linux/install.sh" \
+    "$ROOT/uninstall.sh" \
+    "$ROOT/linux/uninstall.sh" \
+    "$ROOT"/lib/*.sh \
+    "$ROOT"/scripts/*.sh \
+    "$ROOT"/scripts/qa/*.sh \
+    "$ROOT"/linux/scripts/*.sh \
+    "$ROOT/config/zshrc.block.sh" \
+    "$ROOT/linux/config/zshrc.block.sh"
+}
+
+check_spec_contract
+
+if [[ "$mode" == "spec" ]]; then
+  note "PASS GOAL-GATE"
+  exit 0
+fi
+
+run_gate_cmd "diff-check" "$EVIDENCE_DIR/goal-gate-diff-check.txt" git -C "$ROOT" diff --check
+run_gate_cmd "bash-syntax" "$EVIDENCE_DIR/goal-gate-bash-syntax.txt" check_bash_syntax
+check_powershell_parser
+run_gate_cmd "report-manual-completed" "$EVIDENCE_DIR/goal-gate-report-completed.txt" "$QA_DIR/lane3-report-manual.sh" completed
+run_gate_cmd "report-manual-failed-addon" "$EVIDENCE_DIR/goal-gate-report-failed-addon.txt" "$QA_DIR/lane3-report-manual.sh" failed-addon
+run_gate_cmd "report-manual-html" "$EVIDENCE_DIR/goal-gate-report-html.txt" "$QA_DIR/lane3-report-manual.sh" html-assert
+run_gate_cmd "docs-first-run" "$EVIDENCE_DIR/goal-gate-docs-first-run.txt" "$QA_DIR/lane3-docs-content.sh" first-run
+run_gate_cmd "windows-virtual-smoke" "$EVIDENCE_DIR/goal-gate-windows-virtual-smoke.txt" "$QA_DIR/lane3-windows-virtual-smoke.sh"
+
+if [[ "$mode" == "full" ]]; then
+  run_gate_cmd "lane3-all" "$EVIDENCE_DIR/goal-gate-lane3-all.txt" "$QA_DIR/lane3-all.sh"
+fi
+
+note "PASS GOAL-GATE"

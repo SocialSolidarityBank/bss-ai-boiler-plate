@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 recommendation_title() {
   case "$1" in
-    superpowers) echo "Superpowers Debug/Verify Pack" ;;
+    superpowers) echo "Superpowers Planning Pack" ;;
     matt-pocock-skills) echo "Matt Pocock Skills" ;;
     lazy-codex) echo "Lazy-Codex" ;;
     oh-my-claudecode) echo "oh-my-claudecode" ;;
@@ -14,7 +14,7 @@ recommendation_install_command() {
     matt-pocock-skills) echo "npx skills@latest add mattpocock/skills" ;;
     lazy-codex) echo "npx --yes lazycodex-ai install" ;;
     oh-my-claudecode) echo "npm install -g oh-my-claude-sisyphus@latest" ;;
-    superpowers) echo "npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging && npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion" ;;
+    superpowers) echo "npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/brainstorming && npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/writing-plans" ;;
     *) return 1 ;;
   esac
 }
@@ -57,7 +57,8 @@ recommendation_show_card() {
   printf '\n추천 카드: %s\n' "$title"
   case "$id" in
     matt-pocock-skills)
-      printf '필수 설정: Matt Pocock Skills는 기본 안내 단계에서 설치합니다.\n'
+      printf '좋은 경우: 무엇부터 해야 할지 잘 모를 때 체계적으로 설계하고 작업하고 싶을 때\n'
+      printf '강점: 작업을 작게 나누고, 설계와 구현 흐름을 에이전트와 함께 정리합니다.\n'
       printf '설치 명령: npx skills@latest add mattpocock/skills\n'
       printf '설치 뒤 AI 에이전트에 입력: /setup-matt-pocock-skills\n'
       [[ "$details" == "1" ]] && printf '자세히 보기: 런타임 skill 폴더에 직접 쓰지 않고 공식 설치 명령만 안내합니다.\n'
@@ -75,11 +76,11 @@ recommendation_show_card() {
       [[ "$details" == "1" ]] && printf '자세히 보기: oh-my-claudecode는 Claude Code 설정과 오케스트레이션을 보강하는 외부 도구입니다.\n'
       ;;
     superpowers)
-      printf '좋은 경우: 버그 수정과 완료 선언을 더 엄격하게 확인하고 싶을 때\n'
-      printf '강점: systematic-debugging, verification-before-completion으로 추측 수정을 줄이고 검증 증거를 남깁니다.\n'
-      printf '주의: 선택한 뒤에만 설치하는 선택 add-on입니다. 전체 Superpowers workflow는 고급 수동 옵션으로 둡니다.\n'
-      printf '설치 명령: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging && npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion\n'
-      [[ "$details" == "1" ]] && printf '자세히 보기: 전체 플러그인은 Claude Code에서 /plugin install superpowers@claude-plugins-official 또는 Codex 플러그인 마켓플레이스에서 Superpowers를 검색해 설치합니다. 필요하면 SUPERPOWERS_DISABLE_TELEMETRY=true를 설정하세요.\n'
+      printf '좋은 경우: 아이디어가 있을 때 구체화해서 작업 계획까지 세우고 싶을 때\n'
+      printf '강점: brainstorming, writing-plans로 아이디어를 정리하고 실행 가능한 계획으로 바꿉니다.\n'
+      printf '주의: 선택한 뒤에만 설치하는 선택 add-on입니다. 주요 workflow(작업 흐름)는 계획 문서에 함께 안내합니다.\n'
+      printf '설치 명령: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/brainstorming && npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/writing-plans\n'
+      [[ "$details" == "1" ]] && printf '자세히 보기: 필요하면 executing-plans, subagent-driven-development, test-driven-development, requesting-code-review, finishing-a-development-branch도 추가로 검토합니다.\n'
       ;;
   esac
   printf '직접 설치해드릴까요?\n'
@@ -97,7 +98,7 @@ recommendation_show_details() {
       printf '자세히 보기: oh-my-claudecode는 Claude Code 설정과 오케스트레이션을 보강하는 외부 도구입니다.\n'
       ;;
     superpowers)
-      printf '자세히 보기: Debug/Verify Pack은 systematic-debugging과 verification-before-completion만 설치합니다. 전체 Superpowers workflow는 작업 방식 전체를 바꾸므로 고급 수동 옵션으로 둡니다.\n'
+      printf '자세히 보기: Planning Pack은 brainstorming과 writing-plans를 중심으로 설치합니다. 필요하면 executing-plans, subagent-driven-development, test-driven-development, requesting-code-review, finishing-a-development-branch도 추가로 검토합니다.\n'
       ;;
   esac
 }

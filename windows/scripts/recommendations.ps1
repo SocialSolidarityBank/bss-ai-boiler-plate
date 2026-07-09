@@ -4,7 +4,7 @@
     'matt-pocock-skills' { 'Matt Pocock Skills' }
     'lazy-codex' { 'Lazy-Codex' }
     'oh-my-claudecode' { 'oh-my-claudecode' }
-    'superpowers' { 'Superpowers Debug/Verify Pack' }
+    'superpowers' { 'Superpowers Planning Pack' }
     default { $Id }
   }
 }
@@ -17,8 +17,8 @@ function Get-RecommendationInstallCommand {
     'oh-my-claudecode' { 'npm install -g oh-my-claude-sisyphus@latest' }
     'superpowers' {
       @(
-        'npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging',
-        'npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion'
+        'npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/brainstorming',
+        'npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/writing-plans'
       )
     }
     default { $null }
@@ -62,7 +62,8 @@ function Show-RecommendationCard {
   Write-Output "추천 카드: $title"
   switch ($Id) {
     'matt-pocock-skills' {
-      Write-Output '필수 설정: Matt Pocock Skills는 기본 안내 단계에서 설치합니다.'
+      Write-Output '좋은 경우: 무엇부터 해야 할지 잘 모를 때 체계적으로 설계하고 작업하고 싶을 때'
+      Write-Output '강점: 작업을 작게 나누고, 설계와 구현 흐름을 에이전트와 함께 정리합니다.'
       Write-Output '설치 명령: npx skills@latest add mattpocock/skills'
       Write-Output '설치 뒤 AI 에이전트에 입력: /setup-matt-pocock-skills'
       if ($Details) { Write-Output '자세히 보기: 런타임 skill 폴더에 직접 쓰지 않고 공식 설치 명령만 안내합니다.' }
@@ -80,12 +81,12 @@ function Show-RecommendationCard {
       if ($Details) { Write-Output '자세히 보기: Lazy-Codex는 Codex CLI 위에서 작업 목표와 검증 기록을 더 엄격하게 관리하는 도구입니다.' }
     }
     'superpowers' {
-      Write-Output 'Good for: stricter bug fixing and completion checks.'
-      Write-Output 'Strength: installs systematic-debugging and verification-before-completion only.'
-      Write-Output 'Note: optional add-on, installed only after explicit opt-in. Full Superpowers workflow/plugin stays advanced and manual.'
-      Write-Output 'Install command 1: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging'
-      Write-Output 'Install command 2: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion'
-      if ($Details) { Write-Output 'Details: install the full plugin manually with /plugin install superpowers@claude-plugins-official in Claude Code, or search Superpowers in the Codex plugin marketplace. Set SUPERPOWERS_DISABLE_TELEMETRY=true if needed.' }
+      Write-Output '좋은 경우: 아이디어가 있을 때 구체화해서 작업 계획까지 세우고 싶을 때'
+      Write-Output '강점: brainstorming, writing-plans로 아이디어를 정리하고 실행 가능한 계획으로 바꿉니다.'
+      Write-Output '주의: 선택한 뒤에만 설치하는 선택 add-on입니다. 주요 workflow(작업 흐름)는 계획 문서에 함께 안내합니다.'
+      Write-Output '설치 명령 1: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/brainstorming'
+      Write-Output '설치 명령 2: npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/writing-plans'
+      if ($Details) { Write-Output '자세히 보기: 필요하면 executing-plans, subagent-driven-development, test-driven-development, requesting-code-review, finishing-a-development-branch도 추가로 검토합니다.' }
     }
     default {
       Write-Output '좋은 경우: 선택한 AI 도구를 더 깊게 써보고 싶을 때'

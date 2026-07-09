@@ -108,13 +108,14 @@ _install_bss_packages() {
   # shellcheck source=linux/config/bss-packages.sh
   source "$company_config"
   case "$PM" in
-    apt)    [[ "${#BSS_APT_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_APT_PACKAGES[@]}" ;;
-    dnf)    [[ "${#BSS_DNF_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_DNF_PACKAGES[@]}" ;;
-    yum)    [[ "${#BSS_YUM_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_YUM_PACKAGES[@]}" ;;
-    pacman) [[ "${#BSS_PACMAN_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_PACMAN_PACKAGES[@]}" ;;
-    zypper) [[ "${#BSS_ZYPPER_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_ZYPPER_PACKAGES[@]}" ;;
-    apk)    [[ "${#BSS_APK_PACKAGES[@]}" -gt 0 ]] && pm_try "${BSS_APK_PACKAGES[@]}" ;;
+    apt)    [[ "${#BSS_APT_PACKAGES[@]}" -eq 0 ]] || pm_try "${BSS_APT_PACKAGES[@]}" ;;
+    dnf)    [[ "${#BSS_DNF_PACKAGES[@]}" -eq 0 ]] || pm_try "${BSS_DNF_PACKAGES[@]}" ;;
+    yum)    [[ "${#BSS_YUM_PACKAGES[@]}" -eq 0 ]] || pm_try "${BSS_YUM_PACKAGES[@]}" ;;
+    pacman) [[ "${#BSS_PACMAN_PACKAGES[@]}" -eq 0 ]] || pm_try "${BSS_PACMAN_PACKAGES[@]}" ;;
+    zypper) [[ "${#BSS_ZYPPER_PACKAGES[@]}" -eq 0 ]] || pm_try "${BSS_ZYPPER_PACKAGES[@]}" ;;
+    apk)    [[ "${#BSS_APK_PACKAGES[@]}" -eq 0 ]] || pm_try "${BSS_APK_PACKAGES[@]}" ;;
   esac
+  return 0
 }
 
 step_packages() {

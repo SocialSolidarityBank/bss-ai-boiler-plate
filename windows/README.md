@@ -22,6 +22,10 @@ _winget packages · runtimes · PowerShell profile · containers · and AI codin
 
 에이전트는 상태를 먼저 확인하고, 설치 방법만 안내하고 끝내지 않고, 승인하면 직접 설치를 시도합니다. 권한이 막히면 필요한 권한 설정 방법을 알려주고 다시 진행할 수 있습니다.
 
+팀에서 같은 결과를 맞춰야 하는 초보자 설치는 [팀 초보자 표준 설치](../docs/team-beginner-standard-install.md)를 먼저 따르세요.
+에이전트는 Plan Mode(계획 모드)에서 질문을 모두 마치고 Final Installation Plan(최종 설치 계획)을 발행한 뒤에만 실행합니다.
+표준 프리셋은 승인된 계획을 실행할 때 쓰는 `-Standard`입니다.
+
 PowerShell 명령은 fallback, 고급 사용자, QA 확인용입니다. 개발자와 CI는 `-Status`, `-DryRun`, `-List`를 계속 사용할 수 있습니다.
 
 > **🇰🇷 한국어 fallback** — 코딩 에이전트 앱을 쓸 수 없을 때만 PowerShell에서 아래 한 줄을 붙여넣고 Enter:
@@ -64,7 +68,7 @@ If `winget` is missing, install *App Installer* from the Microsoft Store first.
 | **Runtimes** | **mise** → node (LTS), python, go, **ast-grep** · **rustup** → rust + rust-analyzer · **uv** · **bun** |
 | **Containers** | **Docker Desktop** (optional; needs WSL2/virtualization) |
 | **Git/GitHub** | identity (GitHub noreply email), HTTPS credential helper, `core.autocrlf`, sane defaults |
-| **AI agents** | **Claude Code** (`claude`), **codex**, required Matt Pocock Skills, optional **lazycodex** (OmO), optional Superpowers Debug/Verify Pack. Hermes Agent runs inside WSL2. |
+| **AI agents** | **Claude Code** (`claude`), **codex**, optional Matt Pocock Skills, optional **lazycodex** (OmO), optional Superpowers Planning Pack (`brainstorming` + `writing-plans`). Hermes Agent runs inside WSL2. |
 
 ## Steps & flags
 
@@ -109,10 +113,10 @@ re-runs. Existing files you own are preserved.
   with `Get-Command node -All`.
 - **Hermes Agent** has no native Windows build — install it inside a WSL2 distro:
   `wsl bash -c 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup'`
-- **Superpowers Debug/Verify Pack** is optional and installs only when selected:
-  `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/systematic-debugging`
+- **Superpowers Planning Pack** is optional and installs only when selected:
+  `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/brainstorming`
   then
-  `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/verification-before-completion`.
+  `npx skills@latest add https://github.com/obra/superpowers/tree/main/skills/writing-plans`.
 
 ## Uninstall
 

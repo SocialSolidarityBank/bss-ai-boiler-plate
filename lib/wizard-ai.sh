@@ -20,7 +20,7 @@ _sanitize_services() {
 _run_primary_ai_install() {
   local platform="$1" codex="$2" claude="$3" step_file
   if [[ "$codex" != "1" && "$claude" != "1" ]]; then
-    info "기본 AI 도구는 기록만 하고, 필수 Matt Pocock Skills 설정은 진행합니다."
+    info "CLI 도구 설치는 건너뛰고, 선택 결과만 기록합니다."
   fi
   case "$platform" in
     linux) step_file="$ROOT/scripts/07-agents.sh" ;;
@@ -30,6 +30,7 @@ _run_primary_ai_install() {
   source "$step_file"
   BSS_AI_INSTALL_CODEX="$codex" \
   BSS_AI_INSTALL_CLAUDE="$claude" \
+  BSS_AI_INSTALL_MATT=0 \
   BSS_AI_INSTALL_EXTRAS=0 \
   BSS_AI_HELPER_FORCE_INSTALL_PREVIEW=1 \
   step_agents
@@ -57,24 +58,19 @@ _run_primary_ai_install_with_recovery() {
 }
 
 wizard_step_ai_tools() {
-  local platform="$1" choice raw services codex=0 claude=0
-  step "3단계 AI 도구 선택"
-  printf '사용할 AI 도구를 고르세요.\n'
-  printf '1) Codex\n2) Claude\n3) 둘 다\n4) 아직 정하지 않음\n5) 직접 입력\n'
-  choice="$(_wizard_choice '선택:' 4)"
+  local platform="$1" choice services codex=0 claude=0
+  step "3단계 AI CLI 도구 선택"
+  printf 'Codex 앱은 이미 설치했다고 보고, 터미널에서 쓰는 CLI 명령만 확인합니다.\n'
+  printf '1) Codex CLI 설치\n2) Claude Code CLI 설치\n3) Codex CLI + Claude Code CLI 설치\n4) CLI 도구는 설치하지 않음\n'
+  choice="$(_wizard_choice '선택:' 1)"
   case "$choice" in
-    1) services="Codex"; codex=1 ;;
-    2) services="Claude"; claude=1 ;;
-    3) services="Codex,Claude"; codex=1; claude=1 ;;
-    5)
-      raw="$(_wizard_read '서비스 이름을 쉼표로 적어주세요. 예: Cursor, Gemini, GLM, Kimi:' '')"
-      services="$(_sanitize_services "$raw")"
-      [[ -n "$services" ]] || services="직접 입력"
-      info "지원하지 않는 서비스는 기록만 하고 자동 설치하지 않습니다: $services" ;;
+    1) services="Codex CLI"; codex=1 ;;
+    2) services="Claude Code CLI"; claude=1 ;;
+    3) services="Codex CLI,Claude Code CLI"; codex=1; claude=1 ;;
     *)
       state_record_ai_services
-      state_set_step_status ai-tools skipped "아직 정하지 않음"
-      info "AI 도구는 나중에 다시 고를 수 있습니다."
+      state_set_step_status ai-tools skipped "CLI 도구 설치하지 않음"
+      info "AI CLI 도구 설치를 건너뜁니다."
       return 0 ;;
   esac
   local old_ifs="$IFS"

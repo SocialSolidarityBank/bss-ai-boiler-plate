@@ -11,6 +11,7 @@
 # Options:
 #   --dry-run        Show what would happen, change nothing.
 #   --yes, -y        Non-interactive: accept defaults, never prompt.
+#   --standard       Beginner/team preset: --yes --skip docker.
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
@@ -31,7 +32,13 @@ set -euo pipefail
 
 REPO_URL="${AI_BOILER_PLATE_REPO:-${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/ai-boiler-plate.git}}}"
 REPO_BRANCH="${AI_BOILER_PLATE_BRANCH:-${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}}"
-CLONE_DIR="${AI_BOILER_PLATE_DIR:-${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/ai-boiler-plate}}}"
+STANDARD_REQUESTED=0
+for arg in "$@"; do
+  [[ "$arg" == "--standard" ]] && STANDARD_REQUESTED=1
+done
+DEFAULT_CLONE_DIR="$HOME/ai-boiler-plate"
+[[ "$STANDARD_REQUESTED" == "1" ]] && DEFAULT_CLONE_DIR="$HOME/Documents/Codex/bss-ai-boiler-plate"
+CLONE_DIR="${AI_BOILER_PLATE_DIR:-${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$DEFAULT_CLONE_DIR}}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the linux/ dir), or bootstrap by cloning (curl | bash).
@@ -53,12 +60,15 @@ resolve_root() {
   if [[ -d "$CLONE_DIR/.git" ]]; then
     git -C "$CLONE_DIR" pull --ff-only origin "$REPO_BRANCH" >&2 || true
   else
+    mkdir -p "$(dirname "$CLONE_DIR")"
     git clone --branch "$REPO_BRANCH" --depth 1 "$REPO_URL" "$CLONE_DIR" >&2
   fi
   echo "$CLONE_DIR/linux"
 }
 
 ROOT="$(resolve_root)"
+LINUX_ROOT="$ROOT"
+KIT_ROOT="$(cd "$LINUX_ROOT/.." && pwd)"
 # Resolve this script's own absolute path (empty when piped from curl).
 SELF=""
 if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
@@ -70,10 +80,11 @@ if [[ "$SELF" != "$ROOT/install.sh" && -f "$ROOT/install.sh" ]]; then
 fi
 
 # shellcheck source=scripts/lib.sh
-source "$ROOT/scripts/lib.sh"
-source "$ROOT/../lib/wizard.sh"
+source "$LINUX_ROOT/scripts/lib.sh"
+source "$KIT_ROOT/lib/wizard.sh"
+source "$KIT_ROOT/lib/state.sh"
 
-KIT_VERSION="$(cat "$ROOT/../VERSION" 2>/dev/null || echo dev)"
+KIT_VERSION="$(cat "$KIT_ROOT/VERSION" 2>/dev/null || echo dev)"
 
 # ---------------------------------------------------------------------------
 # Step registry
@@ -97,7 +108,7 @@ step_file() {
 
 # usage — print the leading comment block (skip the shebang, stop at the first
 # non-comment line) so --help never leaks code that follows the header.
-usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$ROOT/install.sh"; }
+usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$LINUX_ROOT/install.sh"; }
 
 # ---------------------------------------------------------------------------
 # Arg parsing
@@ -107,6 +118,13 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)   export DRY_RUN=1 ;;
     -y|--yes)    export ASSUME_YES=1; DIRECT_MODE=1 ;;
+    --standard)
+      CLASSIC=1
+      DIRECT_MODE=1
+      export ASSUME_YES=1
+      SKIP="${SKIP:+$SKIP,}docker"
+      export BSS_AI_INSTALL_CODEX=1 BSS_AI_INSTALL_CLAUDE=1 BSS_AI_INSTALL_EXTRAS=0 HERMES=0
+      ;;
     --status)    STATUS=1 ;;
     --reset-state) RESET_STATE=1 ;;
     --classic)   CLASSIC=1; DIRECT_MODE=1 ;;
@@ -172,6 +190,52 @@ selected() {
   done
 }
 
+generate_completion_report() {
+  local report_lib="$KIT_ROOT/lib/report.sh"
+  if [[ ! -f "$report_lib" ]]; then
+    warn "설치 결과 리포트 생성기를 찾지 못했습니다: $report_lib"
+    return 0
+  fi
+  # shellcheck source=/dev/null
+  source "$report_lib"
+  if bss_generate_report; then
+    info "결과 리포트: $(bss_report_path)"
+    info "HTML 사용 매뉴얼: $(bss_manual_path)"
+  else
+    warn "설치는 끝났지만 결과 리포트/HTML 매뉴얼 생성은 실패했습니다. python3와 state 파일을 확인해 주세요."
+  fi
+}
+
+record_completion_state() {
+  local selected_steps service_list
+  selected_steps=" $(selected | tr '\n' ' ') "
+  state_init || true
+
+  if [[ "$selected_steps" == *" prereqs "* || "$selected_steps" == *" packages "* || "$selected_steps" == *" runtimes "* ]]; then
+    state_set_step_status base-tools complete "Linux 기본 환경 설치 완료" || true
+  fi
+  if [[ "$selected_steps" == *" shell "* || "$selected_steps" == *" resume "* ]]; then
+    state_set_step_status shell complete "zsh/profile/restart 설정 완료" || true
+  fi
+  if [[ "$selected_steps" == *" git "* ]]; then
+    state_set_step_status github complete "Git/GitHub 기본 설정 완료" || true
+  fi
+  if [[ "$selected_steps" == *" agents "* ]]; then
+    service_list=()
+    [[ "${BSS_AI_INSTALL_CODEX:-1}" != "0" ]] && service_list+=("Codex")
+    [[ "${BSS_AI_INSTALL_CLAUDE:-1}" != "0" ]] && service_list+=("Claude")
+    if [[ "${#service_list[@]}" -gt 0 ]]; then
+      state_record_ai_services "${service_list[@]}" || true
+      state_set_step_status ai-tools complete "${service_list[*]}" || true
+    else
+      state_set_step_status ai-tools skipped "AI CLI 도구 설치하지 않음" || true
+    fi
+  else
+    state_set_step_status ai-tools skipped "agents step skipped" || true
+  fi
+  state_set_step_status addons skipped "추가 기능은 명시적으로 선택할 때만 설치" || true
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight
 # ---------------------------------------------------------------------------
@@ -185,13 +249,19 @@ info "steps: $(selected | tr '\n' ' ')"
 # Execute
 # ---------------------------------------------------------------------------
 for id in $(selected); do
-  file="$ROOT/scripts/$(step_file "$id")"
+  file="$LINUX_ROOT/scripts/$(step_file "$id")"
   fn="step_$id"
   [[ -f "$file" ]] || die "missing step file: $file"
   # shellcheck disable=SC1090
   source "$file"
   "$fn"
 done
+
+if [[ "${DRY_RUN:-0}" != "1" ]]; then
+  step "Install result manual"
+  record_completion_state
+  generate_completion_report
+fi
 
 step "Done."
 if [[ "$DRY_RUN" == "1" ]]; then

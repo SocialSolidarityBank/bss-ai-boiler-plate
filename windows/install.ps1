@@ -13,6 +13,8 @@
   Show what would happen, change nothing.
 .PARAMETER Yes
   Non-interactive: accept defaults, never prompt.
+.PARAMETER Standard
+  Beginner/team preset: non-interactive, skips Docker, and keeps the default AI agent setup.
 .PARAMETER Only
   Comma-separated list of steps to run (e.g. -Only packages,shell).
 .PARAMETER Skip
@@ -35,6 +37,7 @@
 param(
   [switch]$DryRun,
   [switch]$Yes,
+  [switch]$Standard,
   [string[]]$Only = @(),
   [string[]]$Skip = @(),
   [switch]$NoAgents,
@@ -59,7 +62,12 @@ $script:RunFromFile = [bool]$PSCommandPath
 $HomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
 $RepoUrl    = if ($env:AI_BOILER_PLATE_REPO)   { $env:AI_BOILER_PLATE_REPO }   elseif ($env:BSS_BOILERPLATE_REPO)   { $env:BSS_BOILERPLATE_REPO }   elseif ($env:STARTER_KIT_REPO)   { $env:STARTER_KIT_REPO }   else { 'https://github.com/socialsolidaritybank/ai-boiler-plate.git' }
 $RepoBranch = if ($env:AI_BOILER_PLATE_BRANCH) { $env:AI_BOILER_PLATE_BRANCH } elseif ($env:BSS_BOILERPLATE_BRANCH) { $env:BSS_BOILERPLATE_BRANCH } elseif ($env:STARTER_KIT_BRANCH) { $env:STARTER_KIT_BRANCH } else { 'main' }
-$CloneDir   = if ($env:AI_BOILER_PLATE_DIR)    { $env:AI_BOILER_PLATE_DIR }    elseif ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { Join-Path $HomeDir 'ai-boiler-plate' }
+$DefaultCloneDir = if ($Standard) {
+  Join-Path (Join-Path (Join-Path $HomeDir 'Documents') 'Codex') 'bss-ai-boiler-plate'
+} else {
+  Join-Path $HomeDir 'ai-boiler-plate'
+}
+$CloneDir   = if ($env:AI_BOILER_PLATE_DIR)    { $env:AI_BOILER_PLATE_DIR }    elseif ($env:BSS_BOILERPLATE_DIR)    { $env:BSS_BOILERPLATE_DIR }    elseif ($env:STARTER_KIT_DIR)    { $env:STARTER_KIT_DIR }    else { $DefaultCloneDir }
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root (the windows\ dir), or bootstrap by cloning.
@@ -90,6 +98,7 @@ function Resolve-Root {
   if (Test-Path (Join-Path $CloneDir '.git')) {
     git -C $CloneDir pull --ff-only origin $RepoBranch | Out-Null
   } else {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $CloneDir) | Out-Null
     git clone --branch $RepoBranch --depth 1 $RepoUrl $CloneDir | Out-Null
   }
   return (Join-Path $CloneDir 'windows')
@@ -124,6 +133,17 @@ $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
+$Skip = @($Skip)
+if ($Standard) {
+  $Yes = $true
+  $Classic = $true
+  $Skip += 'docker'
+  $env:BSS_AI_INSTALL_CODEX = '1'
+  $env:BSS_AI_INSTALL_CLAUDE = '1'
+  $env:BSS_AI_INSTALL_EXTRAS = '0'
+  $env:HERMES = '0'
+}
+
 $StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume')
 $StepFile = @{
   prereqs  = '01-prereqs.ps1'
@@ -191,6 +211,52 @@ function Get-SelectedSteps {
   }
 }
 
+function Write-CompletionReport {
+  if ($script:DryRun) { return }
+  $reportScript = Join-Path $Root 'scripts\report.ps1'
+  if (-not (Test-Path $reportScript)) {
+    Write-Warn "설치 결과 리포트 생성기를 찾지 못했습니다: $reportScript"
+    return
+  }
+  try {
+    . $reportScript
+    New-HelperReport | ForEach-Object { Write-Info $_ }
+  } catch {
+    Write-Warn "설치는 끝났지만 결과 리포트/HTML 매뉴얼 생성은 실패했습니다. state 파일과 PowerShell 권한을 확인해 주세요."
+    Write-Warn $_.Exception.Message
+  }
+}
+
+function Record-CompletionState {
+  Initialize-HelperState
+  $selectedSet = @{}
+  foreach ($item in @($selected)) { $selectedSet[$item] = $true }
+
+  if ($selectedSet.ContainsKey('prereqs') -or $selectedSet.ContainsKey('packages') -or $selectedSet.ContainsKey('runtimes')) {
+    Set-StepStatus -Step 'base-tools' -Status 'complete' -Note 'Windows 기본 환경 설치 완료'
+  }
+  if ($selectedSet.ContainsKey('shell') -or $selectedSet.ContainsKey('resume')) {
+    Set-StepStatus -Step 'shell' -Status 'complete' -Note 'PowerShell profile/restart 설정 완료'
+  }
+  if ($selectedSet.ContainsKey('git')) {
+    Set-StepStatus -Step 'github' -Status 'complete' -Note 'Git/GitHub 기본 설정 완료'
+  }
+  if ($selectedSet.ContainsKey('agents')) {
+    $services = @()
+    if ($env:BSS_AI_INSTALL_CODEX -ne '0') { $services += 'Codex' }
+    if ($env:BSS_AI_INSTALL_CLAUDE -ne '0') { $services += 'Claude' }
+    if ($services.Count -gt 0) {
+      Add-AiService -Services $services
+      Set-StepStatus -Step 'ai-tools' -Status 'complete' -Note ($services -join ',')
+    } else {
+      Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note 'AI CLI 도구 설치하지 않음'
+    }
+  } else {
+    Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note 'agents step skipped'
+  }
+  Set-StepStatus -Step 'addons' -Status 'skipped' -Note '추가 기능은 명시적으로 선택할 때만 설치'
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight
 # ---------------------------------------------------------------------------
@@ -214,6 +280,12 @@ foreach ($id in $selected) {
   } else {
     & $StepFunc[$id]
   }
+}
+
+if (-not $script:DryRun) {
+  Write-Step "Install result manual"
+  Record-CompletionState
+  Write-CompletionReport
 }
 
 Write-Step "Done."

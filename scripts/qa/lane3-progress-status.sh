@@ -13,7 +13,7 @@ case "$mode" in
     evidence="$EVIDENCE_DIR/g008-progress-status-malformed-green.txt"
     printf '{ this is not valid json\n' > "$state_path"
     before="$(cat "$state_path")"
-    run_and_capture "$evidence" env BSS_AI_HELPER_HOME="$helper_home" "$ROOT/install.sh" --status || fail "status command failed for malformed state; see $evidence"
+    run_and_capture "$evidence" env AI_BOILER_PLATE_HOME="$helper_home" BSS_AI_HELPER_HOME="$helper_home" "$ROOT/install.sh" --status || fail "status command failed for malformed state; see $evidence"
     after="$(cat "$state_path")"
     [[ "$before" == "$after" ]] || fail "malformed state was modified"
     assert_contains "$evidence" '상태 파일을 읽을 수 없습니다|malformed|invalid'
@@ -33,7 +33,7 @@ case "$mode" in
     evidence="$EVIDENCE_DIR/g008-progress-status-green.txt"
     write_sample_state "$state_path" mixed
     before="$(cat "$state_path")"
-    run_and_capture "$evidence" env BSS_AI_HELPER_HOME="$helper_home" "$ROOT/install.sh" --status || fail "status command failed; see $evidence"
+    run_and_capture "$evidence" env AI_BOILER_PLATE_HOME="$helper_home" BSS_AI_HELPER_HOME="$helper_home" "$ROOT/install.sh" --status || fail "status command failed; see $evidence"
     after="$(cat "$state_path")"
     [[ "$before" == "$after" ]] || fail "--status modified state.json"
     assert_contains "$evidence" '3/6 진행됨'

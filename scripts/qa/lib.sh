@@ -37,7 +37,7 @@ assert_contains() {
     fi
     fail "missing pattern '$pattern' in $path"
   else
-    printf '%s' "$path" | grep -Eq -- "$pattern" || fail "missing pattern '$pattern' in text"
+    grep -Eq -- "$pattern" <<<"$path" || fail "missing pattern '$pattern' in text"
   fi
 }
 
@@ -48,7 +48,7 @@ assert_not_contains() {
       fail "unexpected pattern '$pattern' in $path"
     fi
   else
-    if printf '%s' "$path" | grep -Eq -- "$pattern"; then
+    if grep -Eq -- "$pattern" <<<"$path"; then
       fail "unexpected pattern '$pattern' in text"
     fi
   fi

@@ -5,7 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 mode="${1:-first-run}"
 evidence="$EVIDENCE_DIR/g011-docs-content-${mode}.txt"
-docs=("$ROOT/README.md" "$ROOT/linux/README.md" "$ROOT/windows/README.md" "$ROOT/docs/index.html" "$ROOT/docs/publish-readiness.md" "$ROOT/NOTICE")
+docs=("$ROOT/README.md" "$ROOT/linux/README.md" "$ROOT/windows/README.md" "$ROOT/docs/index.html" "$ROOT/docs/publish-readiness.md" "$ROOT/docs/goal-mode-quality-gate.md" "$ROOT/NOTICE")
 combined="$(cat "${docs[@]}")"
 
 case "$mode" in
@@ -21,9 +21,11 @@ case "$mode" in
       assert_contains "$combined" 'G-stack office-hours repo/link'
       assert_contains "$combined" 'npx skills@latest add mattpocock/skills'
       assert_contains "$combined" '/setup-matt-pocock-skills'
-      assert_contains "$combined" 'Superpowers Debug/Verify'
-      assert_contains "$combined" 'systematic-debugging'
-      assert_contains "$combined" 'verification-before-completion'
+      assert_contains "$combined" 'Superpowers Planning'
+      assert_contains "$combined" 'brainstorming'
+      assert_contains "$combined" 'writing-plans'
+      assert_contains "$combined" 'Goal Gate'
+      assert_contains "$combined" 'goal-mode-gate.sh --quick'
       assert_contains "$combined" '포크'
       printf 'docs first-run content present\n'
     } > "$evidence" 2>&1 || { cat "$evidence" >&2; exit 1; }

@@ -15,7 +15,7 @@ case "$mode" in
 esac
 
 write_sample_state "$state_path" "$variant"
-run_and_capture "$evidence" env BSS_AI_HELPER_HOME="$helper_home" "$ROOT/scripts/10-report.sh" --generate || fail "report/manual generation failed; see $evidence"
+run_and_capture "$evidence" env AI_BOILER_PLATE_HOME="$helper_home" BSS_AI_HELPER_HOME="$helper_home" "$ROOT/scripts/10-report.sh" --generate || fail "report/manual generation failed; see $evidence"
 
 report="$helper_home/latest-report.md"
 manual="$helper_home/manual/index.html"
@@ -42,17 +42,17 @@ assert_contains "$report" 'does not decide business viability'
 assert_contains "$report" 'G-stack office-hours repo/link'
 assert_contains "$report" 'npx skills@latest add mattpocock/skills'
 assert_contains "$report" '/setup-matt-pocock-skills'
-assert_contains "$report" 'Superpowers Debug/Verify Pack'
-assert_contains "$report" 'systematic-debugging'
-assert_contains "$report" 'verification-before-completion'
+assert_contains "$report" 'Superpowers Planning Pack'
+assert_contains "$report" 'brainstorming'
+assert_contains "$report" 'writing-plans'
 assert_contains "$manual" 'Business judgment route'
 assert_contains "$manual" 'does not decide business viability'
 assert_contains "$manual" 'G-stack office-hours repo/link'
 assert_contains "$manual" 'npx skills@latest add mattpocock/skills'
 assert_contains "$manual" '/setup-matt-pocock-skills'
-assert_contains "$manual" 'Superpowers Debug/Verify Pack'
-assert_contains "$manual" 'systematic-debugging'
-assert_contains "$manual" 'verification-before-completion'
+assert_contains "$manual" 'Superpowers Planning Pack'
+assert_contains "$manual" 'brainstorming'
+assert_contains "$manual" 'writing-plans'
 
 case "$mode" in
   failed-addon)

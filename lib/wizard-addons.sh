@@ -44,37 +44,23 @@ _install_addon() {
 }
 
 wizard_step_addons() {
-  local services preference id choice another title candidates seen candidate old_ifs
-  services="$(_current_services_csv)"
+  local id choice title
   step "4단계 추가 도구 추천"
-  printf '원하는 도움에 가까운 항목을 고르세요.\n'
-  printf '1) 강한 오케스트레이션, 멀티 서브 에이전트\n'
-  printf '2) 버그 수정/완료 검증 습관 보강\n'
-  printf '3) Codex로 긴 자동 설치/수정 작업\n'
-  printf '4) 고급 품질 워크플로우\n'
-  printf '5) 추천 없이 마치기\n'
-  choice="$(_wizard_choice '선택:' 5)"
-  case "$choice" in
-    1) preference="orchestration" ;;
-    2) preference="teacher" ;;
-    3) preference="long-work" ;;
-    4) preference="quality" ;;
-    *) preference="none" ;;
-  esac
-  candidates="$(recommendation_candidates "$services" "$preference")"
-  id="$(recommendation_pick "$services" "$preference")"
-  [[ -n "$id" ]] || id="${candidates%%,*}"
-  if [[ -z "$id" ]]; then
-    info "현재 선택으로는 자동 설치할 수 있는 추가 도구가 없습니다. 기록된 서비스는 나중에 직접 확인하세요."
-    state_set_step_status addons skipped "자동 설치 가능한 추천 없음"
-    return 0
-  fi
-  seen=""
-  title="$(recommendation_title "$id")"
-  while :; do
-    seen="${seen:+$seen,}$id"
+  printf '추가 기능은 하나씩 확인합니다. 각 항목은 설치 또는 설치하지 않음으로 기록합니다.\n'
+  for id in matt-pocock-skills superpowers lazy-codex oh-my-claudecode; do
+    title="$(recommendation_title "$id")"
     recommendation_show_card "$id" 0
-    printf '1) 설치\n2) 나중에\n3) 설치하지 않음\n4) 자세히 보기\n5) 상태만 보기\n'
+    case "$id" in
+      matt-pocock-skills)
+        printf '질문: 무엇부터 해야 할지 잘 모를 때, 체계적으로 설계하고 작업할 수 있게 도와주는 스킬인 Matt Pocock Skills를 설치할까요?\n' ;;
+      superpowers)
+        printf '질문: 아이디어가 있을 때 아이디어를 구체화해서 작업 계획까지 세워주는 스킬인 Superpowers를 설치할까요?\n' ;;
+      lazy-codex)
+        printf '질문: Codex를 사용할 때 코딩, 수정, 검증 작업을 구조적으로 도와주는 도구인 Lazy-Codex를 설치할까요?\n' ;;
+      oh-my-claudecode)
+        printf '질문: Claude Code 사용을 쉽게 도와주는 도구인 Oh-My-Claudecode를 설치할까요?\n' ;;
+    esac
+    printf '1) 네 설치할게요\n2) 설치하지 않을게요\n'
     choice="$(_wizard_choice '선택:' 2)"
     case "$choice" in
       1)
@@ -84,35 +70,10 @@ wizard_step_addons() {
           skipped) state_set_step_status addons skipped "$title 건너뜀" ;;
           *) state_set_step_status addons failed "$title 실패" ;;
         esac ;;
-      3)
+      *)
         state_record_addon "$id" "$title" skipped "사용자가 설치하지 않음"
         state_set_step_status addons skipped "$title 설치하지 않음" ;;
-      4)
-        recommendation_show_details "$id"
-        continue ;;
-      5)
-        show_status
-        continue ;;
-      *)
-        state_record_addon "$id" "$title" pending "나중에"
-        state_set_step_status addons skipped "$title 나중에" ;;
     esac
-    printf '다른 추천도 볼까요?\n1) 네\n2) 아니요\n'
-    another="$(_wizard_choice '선택:' 2)"
-    [[ "$another" == "1" ]] || return 0
-    candidate=""
-    old_ifs="$IFS"
-    IFS=','
-    for candidate in $candidates; do
-      case ",$seen," in *",$candidate,"*) candidate="" ;; esac
-      [[ -n "$candidate" ]] && break
-    done
-    IFS="$old_ifs"
-    if [[ -z "$candidate" ]]; then
-      info "지금 조건에서 더 보여드릴 추천은 없습니다."
-      return 0
-    fi
-    id="$candidate"
-    title="$(recommendation_title "$id")"
   done
+  info "Final Installation Plan(최종 설치 계획)에는 지금까지 선택한 기본 환경, AI 도구, 추가 기능 선택 결과를 포함해야 합니다."
 }

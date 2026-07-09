@@ -22,7 +22,7 @@ Skills and plugins may change in this layer only:
 
 | Purpose | POSIX files | Windows files | Notes |
 | --- | --- | --- | --- |
-| Required skill setup | `scripts/07-agents.sh`, `linux/scripts/07-agents.sh` | `windows/scripts/07-agents.ps1` | Matt Pocock Skills is v1 required. Replace only with an explicit v2 decision. |
+| Optional skill setup | `scripts/07-agents.sh`, `linux/scripts/07-agents.sh` | `windows/scripts/07-agents.ps1` | Matt Pocock Skills is selected explicitly in the beginner flow. Replace only with an explicit v2 decision. |
 | Optional recommendations | `lib/recommendations.sh`, `lib/wizard-addons.sh` | `windows/scripts/recommendations.ps1`, `windows/scripts/wizard-ai.ps1` | Optional by default. Must ask before install. |
 | Agent-facing guidance | `AGENTS.md`, `resources/codex-skill/bss-ai-helper/SKILL.md` | same shared docs | Keep agent-first entry and business-judgment routing. |
 | User docs | `README.md`, `docs/`, `linux/README.md` | `windows/README.md` | Explain what changed and what stays core. |
@@ -49,8 +49,8 @@ v1 keeps the original lazy-starter-kit base environment and changes only the age
 
 - Product identity: `ai-boiler-plate`
 - Entry point: Claude/Codex agent app with `보일러 플레이트 시작해줘`
-- Required skill: Matt Pocock Skills
-- Optional add-ons: LazyCodex, oh-my-claudecode, Hermes, and a Superpowers Debug/Verify Pack where supported
+- Optional skill: Matt Pocock Skills
+- Optional add-ons: LazyCodex, oh-my-claudecode, Hermes, and a Superpowers Planning Pack where supported
 - Advanced manual add-on: full Superpowers workflow/plugin, only after explicit user opt-in
 - Removed plugin: gajae-code / `gjc`
 - Business-judgment route: visible/configured G-stack office-hours first, ask for the link only when absent

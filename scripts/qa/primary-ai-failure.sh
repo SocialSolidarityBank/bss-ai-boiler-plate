@@ -10,7 +10,7 @@ run_case() {
   {
     printf 'Scenario: primary %s installer failure must not be recorded as success\n' "$kind"
     printf 'Helper home: %s\n\n' "$helper_home"
-    BSS_AI_HELPER_HOME="$helper_home" ROOT="$ROOT" AI_CHOICE="$choice" AI_KIND="$kind" bash <<'BASH'
+    AI_BOILER_PLATE_HOME="$helper_home" BSS_AI_HELPER_HOME="$helper_home" ROOT="$ROOT" AI_CHOICE="$choice" AI_KIND="$kind" bash <<'BASH'
 set -euo pipefail
 DRY_RUN=0
 ASSUME_YES=0

@@ -22,7 +22,7 @@ case "$mode" in
     helper_home="${BSS_AI_HELPER_HOME:-$(make_temp_home)}"
     mkdir -p "$helper_home"
     write_sample_state "$helper_home/state.json" failed-addon
-    env BSS_AI_HELPER_HOME="$helper_home" "$ROOT/scripts/10-report.sh" --generate > "$evidence" 2>&1 || fail "could not generate sample report for no-secret scan"
+    env AI_BOILER_PLATE_HOME="$helper_home" BSS_AI_HELPER_HOME="$helper_home" "$ROOT/scripts/10-report.sh" --generate > "$evidence" 2>&1 || fail "could not generate sample report for no-secret scan"
     if grep -RIE "$secret_regex" "$helper_home" "$ROOT/README.md" "$ROOT/docs" "$ROOT/resources" >> "$evidence" 2>&1; then
       fail "secret-like value found; see $evidence"
     fi
