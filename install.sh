@@ -79,6 +79,7 @@ fi
 # shellcheck source=scripts/lib.sh
 source "$ROOT/scripts/lib.sh"
 source "$ROOT/lib/wizard.sh"
+source "$ROOT/lib/state.sh"
 
 KIT_VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)"
 
@@ -204,6 +205,36 @@ generate_completion_report() {
   fi
 }
 
+record_completion_state() {
+  local selected_steps service_list
+  selected_steps=" $(selected | tr '\n' ' ') "
+  state_init || true
+
+  if [[ "$selected_steps" == *" prereqs "* || "$selected_steps" == *" brew "* || "$selected_steps" == *" runtimes "* ]]; then
+    state_set_step_status base-tools complete "macOS 기본 환경 설치 완료" || true
+  fi
+  if [[ "$selected_steps" == *" shell "* || "$selected_steps" == *" resume "* ]]; then
+    state_set_step_status shell complete "zsh/profile/restart 설정 완료" || true
+  fi
+  if [[ "$selected_steps" == *" git "* ]]; then
+    state_set_step_status github complete "Git/GitHub 기본 설정 완료" || true
+  fi
+  if [[ "$selected_steps" == *" agents "* ]]; then
+    service_list=()
+    [[ "${BSS_AI_INSTALL_CODEX:-1}" != "0" ]] && service_list+=("Codex")
+    [[ "${BSS_AI_INSTALL_CLAUDE:-1}" != "0" ]] && service_list+=("Claude")
+    if [[ "${#service_list[@]}" -gt 0 ]]; then
+      state_record_ai_services "${service_list[@]}" || true
+      state_set_step_status ai-tools complete "${service_list[*]}" || true
+    else
+      state_set_step_status ai-tools skipped "AI CLI 도구 설치하지 않음" || true
+    fi
+  else
+    state_set_step_status ai-tools skipped "agents step skipped" || true
+  fi
+  state_set_step_status addons skipped "추가 기능은 명시적으로 선택할 때만 설치" || true
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight
 # ---------------------------------------------------------------------------
@@ -228,6 +259,7 @@ done
 
 if [[ "${DRY_RUN:-0}" != "1" ]]; then
   step "Install result manual"
+  record_completion_state
   generate_completion_report
 fi
 

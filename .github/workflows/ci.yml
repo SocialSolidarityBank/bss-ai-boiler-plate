@@ -87,6 +87,9 @@ jobs:
           command -v ast-grep >/dev/null 2>&1 && echo "ok   ast-grep" || { echo "MISS ast-grep"; fail=1; }
           for t in codex claude; do need "$t"; done
           grep -q 'ai-boiler-plate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/state.json" && echo "ok   state.json" || { echo "MISS state.json"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/latest-report.md" && echo "ok   latest-report.md" || { echo "MISS latest-report.md"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/manual/index.html" && echo "ok   manual/index.html" || { echo "MISS manual/index.html"; fail=1; }
           exit $fail
 
       - name: uninstall (teardown)
@@ -172,6 +175,9 @@ jobs:
           command -v ast-grep >/dev/null 2>&1 && echo "ok   ast-grep" || { echo "MISS ast-grep"; fail=1; }
           for t in codex claude; do need "$t"; done
           grep -q 'ai-boiler-plate:main' "$HOME/.zshrc" && echo "ok   zshrc block" || { echo "MISS zshrc block"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/state.json" && echo "ok   state.json" || { echo "MISS state.json"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/latest-report.md" && echo "ok   latest-report.md" || { echo "MISS latest-report.md"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/manual/index.html" && echo "ok   manual/index.html" || { echo "MISS manual/index.html"; fail=1; }
           exit $fail
 
       - name: uninstall (teardown)
@@ -252,6 +258,9 @@ jobs:
           test -d "$HOME/.oh-my-zsh"            || { echo "MISS oh-my-zsh"; fail=1; }
           grep -q 'ai-boiler-plate:main' "$HOME/.zshrc" || { echo "MISS zshrc block"; fail=1; }
           test -d "$HOME/.codex/plugins/cache/sisyphuslabs/omo" && echo "ok   lazycodex/omo" || echo "warn lazycodex/omo not found"
+          test -f "$HOME/.ai-boiler-plate/state.json" && echo "ok   state.json" || { echo "MISS state.json"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/latest-report.md" && echo "ok   latest-report.md" || { echo "MISS latest-report.md"; fail=1; }
+          test -f "$HOME/.ai-boiler-plate/manual/index.html" && echo "ok   manual/index.html" || { echo "MISS manual/index.html"; fail=1; }
           exit $fail
 
       - name: uninstall (full teardown)
@@ -322,7 +331,16 @@ jobs:
           if ((Test-Path $prof) -and (Select-String -Path $prof -SimpleMatch 'ai-boiler-plate:main' -Quiet)) {
             Write-Host "ok   profile block"
           } else { Write-Host "MISS profile block"; $fail = 1 }
-          exit $fail
+          $helperHome = Join-Path $env:USERPROFILE '.ai-boiler-plate'
+          foreach ($path in @(
+            (Join-Path $helperHome 'state.json'),
+            (Join-Path $helperHome 'latest-report.md'),
+            (Join-Path $helperHome 'manual\index.html')
+          )) {
+            if (Test-Path $path) { Write-Host "ok   $path" }
+            else { Write-Host "MISS $path"; $fail = 1 }
+          }
+          [Environment]::Exit($fail)
 
       - name: uninstall (teardown)
         shell: pwsh
@@ -340,3 +358,4 @@ jobs:
             Write-Host "STILL claude"; exit 1
           }
           Write-Host "ok   claude removed"
+          [Environment]::Exit(0)

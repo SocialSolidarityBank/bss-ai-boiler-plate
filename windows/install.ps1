@@ -227,6 +227,36 @@ function Write-CompletionReport {
   }
 }
 
+function Record-CompletionState {
+  Initialize-HelperState
+  $selectedSet = @{}
+  foreach ($item in @($selected)) { $selectedSet[$item] = $true }
+
+  if ($selectedSet.ContainsKey('prereqs') -or $selectedSet.ContainsKey('packages') -or $selectedSet.ContainsKey('runtimes')) {
+    Set-StepStatus -Step 'base-tools' -Status 'complete' -Note 'Windows 기본 환경 설치 완료'
+  }
+  if ($selectedSet.ContainsKey('shell') -or $selectedSet.ContainsKey('resume')) {
+    Set-StepStatus -Step 'shell' -Status 'complete' -Note 'PowerShell profile/restart 설정 완료'
+  }
+  if ($selectedSet.ContainsKey('git')) {
+    Set-StepStatus -Step 'github' -Status 'complete' -Note 'Git/GitHub 기본 설정 완료'
+  }
+  if ($selectedSet.ContainsKey('agents')) {
+    $services = @()
+    if ($env:BSS_AI_INSTALL_CODEX -ne '0') { $services += 'Codex' }
+    if ($env:BSS_AI_INSTALL_CLAUDE -ne '0') { $services += 'Claude' }
+    if ($services.Count -gt 0) {
+      Add-AiService -Services $services
+      Set-StepStatus -Step 'ai-tools' -Status 'complete' -Note ($services -join ',')
+    } else {
+      Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note 'AI CLI 도구 설치하지 않음'
+    }
+  } else {
+    Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note 'agents step skipped'
+  }
+  Set-StepStatus -Step 'addons' -Status 'skipped' -Note '추가 기능은 명시적으로 선택할 때만 설치'
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight
 # ---------------------------------------------------------------------------
@@ -254,6 +284,7 @@ foreach ($id in $selected) {
 
 if (-not $script:DryRun) {
   Write-Step "Install result manual"
+  Record-CompletionState
   Write-CompletionReport
 }
 
