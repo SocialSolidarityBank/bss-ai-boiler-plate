@@ -222,4 +222,4 @@ foreach ($id in $selected) { & $GroupFunc[$id] }
 Write-Step "Uninstall complete."
 Write-Ok "Restart PowerShell to load a clean environment."
 if ($script:DryRun) { Write-Info "That was a dry run -- re-run without -DryRun to apply." }
-exit 0
+[Environment]::Exit(0)
