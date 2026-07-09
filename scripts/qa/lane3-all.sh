@@ -17,7 +17,15 @@ check_powershell() {
 
   local winps_evidence="$EVIDENCE_DIR/g012-windows-powershell-parser.txt"
   if command -v powershell.exe >/dev/null 2>&1; then
-    WIN_WINDOWS_DIR="$(cygpath -w "$ROOT/windows")" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference="Stop"; $files = @(Get-ChildItem $env:WIN_WINDOWS_DIR -Recurse -Include *.ps1); $files | ForEach-Object { $tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count -gt 0) { throw ($errors | Select-Object -First 1).Message } }; "PASS native Windows PowerShell parser"; "FILES_PARSED: $($files.Count)"' > "$winps_evidence" 2>&1
+    local win_windows_dir
+    if command -v cygpath >/dev/null 2>&1; then
+      win_windows_dir="$(cygpath -w "$ROOT/windows")"
+    elif command -v wslpath >/dev/null 2>&1; then
+      win_windows_dir="$(wslpath -w "$ROOT/windows")"
+    else
+      win_windows_dir="$ROOT/windows"
+    fi
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference="Stop"; $dir = "'"$win_windows_dir"'"; $files = @(Get-ChildItem $dir -Recurse -Include *.ps1); $files | ForEach-Object { $tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count -gt 0) { throw ($errors | Select-Object -First 1).Message } }; "PASS native Windows PowerShell parser"; "FILES_PARSED: $($files.Count)"' > "$winps_evidence" 2>&1
     note "PASS G012-WINPS $winps_evidence"
   else
     printf 'SKIP G012-WINPS: Windows PowerShell is not available on this machine.\n' > "$winps_evidence"

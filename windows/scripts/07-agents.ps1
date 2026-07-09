@@ -15,19 +15,22 @@ function Get-AgentVersionLine {
 function Step-Agents {
   $installCodex = ($env:BSS_AI_INSTALL_CODEX -ne '0')
   $installClaude = ($env:BSS_AI_INSTALL_CLAUDE -ne '0')
+  $installMatt = ($env:BSS_AI_INSTALL_MATT -ne '0')
   $installExtras = ($env:BSS_AI_INSTALL_EXTRAS -eq '1')
   $primaryFailed = $false
   $titleParts = @()
   if ($installCodex) { $titleParts += 'codex' }
-  $titleParts += 'Matt Pocock Skills'
+  if ($installMatt) { $titleParts += 'Matt Pocock Skills' }
   if ($installExtras -and $installCodex) { $titleParts += 'lazycodex' }
   if ($installClaude) { $titleParts += 'Claude Code' }
   $title = if ($titleParts.Count -gt 0) { $titleParts -join ' + ' } else { 'record selected AI services' }
   Write-Step "AI agents: $title"
   Update-SessionPath
 
-  # --- Matt Pocock Skills (required guided setup) -----------------------
-  if ($script:DryRun) {
+  # --- Matt Pocock Skills (selected guided setup) -----------------------
+  if (-not $installMatt) {
+    Write-Info "Skipping Matt Pocock Skills (BSS_AI_INSTALL_MATT=0)"
+  } elseif ($script:DryRun) {
     Write-Info "[dry-run] npx --yes skills@latest add mattpocock/skills"
     Write-Info "[dry-run] after install, tell your agent: /setup-matt-pocock-skills"
   } elseif (Test-HasCommand npx) {
@@ -48,7 +51,7 @@ function Step-Agents {
       $primaryFailed = $true
     }
   } else {
-    Write-Warn "npx not found -- required Matt Pocock Skills setup is pending: npx skills@latest add mattpocock/skills"
+    Write-Warn "npx not found -- selected Matt Pocock Skills setup is pending: npx skills@latest add mattpocock/skills"
     Write-Warn "After it installs, tell your agent: /setup-matt-pocock-skills"
     $primaryFailed = $true
   }

@@ -27,9 +27,19 @@ PowerShell이나 터미널 명령은 고급 사용자, QA, 장애 복구용 fall
 
 에이전트가 사업성(business viability), 상업적 판단(commercial judgment), 고객 가치 검증 같은 business judgment가 필요한 질문을 만나면, 설정되어 있거나 눈에 보이는 G-stack office-hours repo/link를 먼저 사용합니다. 보이지 않을 때만 그 순간 사용자에게 G-stack office-hours repo/link를 물어봅니다.
 
-## Required AI skill setup
+## 팀 초보자 표준 설치
 
-Matt Pocock Skills are required setup for this boilerplate. Run:
+완전 초보자에게 같은 결과를 주려면 [팀 초보자 표준 설치](docs/team-beginner-standard-install.md)를 그대로 따르세요.
+초보자는 repo link(레포 링크)와 `설치해줘` 또는 `설치 시작해줘`만 입력하면 됩니다.
+표준 repo folder(레포 폴더)는 Windows에서 `문서\Codex\bss-ai-boiler-plate`, Linux에서 `~/Documents/Codex/bss-ai-boiler-plate`입니다.
+Codex를 처음 설치한 사용자가 실제로 만나는 흐름은 [초보자 Codex 사용자 시나리오](docs/beginner-codex-user-scenario.md)에 정리되어 있습니다.
+에이전트는 Plan Mode(계획 모드)에서 OS(운영체제), Basic Environment(기본 환경), AI CLI 도구, 추가 기능을 먼저 질문하고 Final Installation Plan(최종 설치 계획)을 발행합니다.
+초보자 표준 설치는 Windows/Linux 기준으로 안내합니다. 표준 프리셋은 승인된 계획을 실행할 때 Linux에서 `--standard`, Windows에서 `-Standard`로 씁니다.
+이 가이드는 작업 폴더, 에이전트 요청 문구, 질문 순서, 최종 계획 문서, 표준 설치 명령을 한 번에 고정합니다.
+
+## AI skill setup
+
+Matt Pocock Skills는 무엇부터 해야 할지 잘 모를 때 체계적으로 설계하고 작업할 수 있게 도와주는 선택 skill(스킬)입니다. 선택했다면 아래 명령을 실행합니다.
 
 ```sh
 npx skills@latest add mattpocock/skills
@@ -41,7 +51,7 @@ Then ask your Claude/Codex agent:
 /setup-matt-pocock-skills
 ```
 
-LazyCodex, oh-my-claudecode, Hermes, and Superpowers stay optional and are installed only after explicit opt-in. The default Superpowers option is a small Debug/Verify Pack (`systematic-debugging` and `verification-before-completion`); the full Superpowers workflow remains an advanced manual plugin choice.
+Lazy-Codex, Oh-My-Claudecode, Hermes, and Superpowers stay optional and are installed only after explicit opt-in(명시적 선택). Superpowers는 아이디어를 구체화해서 작업 계획까지 세워주는 Planning Pack(계획 스킬 묶음)으로 안내하며, 기본 매핑은 `brainstorming` + `writing-plans`입니다.
 
 ## 지원 범위
 
@@ -97,6 +107,23 @@ PowerShell/zsh, Git/GitHub, Docker/Colima, status/resume/report)는 v1 기본값
 고정합니다. 이후 교체는 스킬, 플러그인, 선택 add-on 레이어에서만 진행합니다.
 범위와 체크리스트는 [`docs/extension-points.md`](docs/extension-points.md)를
 기준으로 봅니다.
+
+설치가 완료되면 `latest-report.md`와 `manual/index.html`이 자동 생성됩니다.
+초보자는 HTML manual(HTML 사용 매뉴얼)에서 무엇이 어디에 설치됐는지, 각 도구의
+용도, 사용 방법, 수정하거나 다시 설치하는 방법을 확인합니다.
+
+## Goal Gate(목표 게이트)
+
+초보자 설치 품질을 균일하게 유지하려면 [Goal Mode Quality Gate(목표 모드 품질 게이트)](docs/goal-mode-quality-gate.md)를 사용합니다.
+로컬 훅은 아래 명령으로 켭니다.
+
+```sh
+scripts/install-goal-hooks.sh
+```
+
+이후 `pre-commit`은 `scripts/qa/goal-mode-gate.sh --quick`, `pre-push`는
+`scripts/qa/goal-mode-gate.sh --full`을 실행합니다. 에이전트도 최종 완료 답변
+전에 quick gate(빠른 게이트)를 통과해야 합니다.
 
 ## 게시 준비
 

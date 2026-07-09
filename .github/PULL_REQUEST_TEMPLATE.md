@@ -17,4 +17,5 @@
 
 - [ ] `shellcheck` + `bash -n`(맥/리눅스) 또는 PowerShell 파싱(윈도우)을 **로컬에서** 돌렸어요
 - [ ] `--dry-run` / `-DryRun` 으로 미리보기 확인 — 멱등·비파괴 유지
+- [ ] `scripts/qa/goal-mode-gate.sh --quick` 통과
 - [ ] 사용자에게 보이는 변경이면 `VERSION` + `CHANGELOG.md` 업데이트 (필요 시 문서도)

@@ -4,11 +4,12 @@
 step_agents() {
   local install_codex="${BSS_AI_INSTALL_CODEX:-1}"
   local install_claude="${BSS_AI_INSTALL_CLAUDE:-1}"
+  local install_matt="${BSS_AI_INSTALL_MATT:-1}"
   local install_extras="${BSS_AI_INSTALL_EXTRAS:-0}"
   local primary_failed=0
   local title_parts=""
   [[ "$install_codex" == "1" ]] && title_parts="${title_parts:+$title_parts + }codex"
-  title_parts="${title_parts:+$title_parts + }Matt Pocock Skills"
+  [[ "$install_matt" == "1" ]] && title_parts="${title_parts:+$title_parts + }Matt Pocock Skills"
   [[ "$install_extras" == "1" && "$install_codex" == "1" ]] && title_parts="${title_parts:+$title_parts + }lazycodex"
   [[ "$install_claude" == "1" ]] && title_parts="${title_parts:+$title_parts + }Claude Code"
   [[ -n "$title_parts" ]] || title_parts="record selected AI services"
@@ -17,8 +18,10 @@ step_agents() {
   load_mise
   export PATH="$HOME/.local/bin:$PATH"
 
-  # --- Matt Pocock Skills (required guided setup) -----------------------
-  if [[ "$DRY_RUN" == "1" ]]; then
+  # --- Matt Pocock Skills (selected guided setup) -----------------------
+  if [[ "$install_matt" != "1" ]]; then
+    info "Skipping Matt Pocock Skills (BSS_AI_INSTALL_MATT=0)"
+  elif [[ "$DRY_RUN" == "1" ]]; then
     info "[dry-run] npx --yes skills@latest add mattpocock/skills"
     info "[dry-run] after install, tell your agent: /setup-matt-pocock-skills"
   elif have npx; then
@@ -38,7 +41,7 @@ step_agents() {
       primary_failed=1
     fi
   else
-    warn "npx not found -- required Matt Pocock Skills setup is pending: npx skills@latest add mattpocock/skills"
+    warn "npx not found -- selected Matt Pocock Skills setup is pending: npx skills@latest add mattpocock/skills"
     warn "After it installs, tell your agent: /setup-matt-pocock-skills"
     primary_failed=1
   fi

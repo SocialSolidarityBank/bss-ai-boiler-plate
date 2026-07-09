@@ -22,27 +22,43 @@ function Invoke-BaseStep {
   param([string]$Platform = 'Windows', [Parameter(Mandatory)][string]$Root)
   if (-not (Test-IsWindows)) { Stop-Kit 'This kit targets Windows only.' }
   Write-Step '1단계 기본 설치 준비'
-  Write-Info '오픈소스 프로그램을 실행하기 위한 기본 실행 환경을 준비합니다.'
-  Write-Info '포함: 기본 CLI 도구, Node.js, Python, Go, Rust'
+  Write-Info '기본 환경은 개발 도구가 실행될 바탕 프로그램입니다.'
+  Write-Info '패키지는 필요한 프로그램을 내려받아 설치하는 묶음입니다.'
+  Write-Info '런타임은 Node.js나 Python처럼 개발 도구가 돌아가게 해주는 실행기입니다.'
+  Write-Info '셸은 PowerShell이나 터미널처럼 명령을 입력하는 창입니다.'
   Write-Info 'Docker는 기본 질문형 설치에서 제외합니다. 나중에 고급 단계에서 따로 선택합니다.'
-  Write-Output '1) 설치하기'
-  Write-Output '2) 나중에 하기'
-  Write-Output '3) 상태만 보기'
+  Write-Output '기본 환경을 전체 설치할까요?'
+  Write-Output '1) 네, 전체 설치할게요'
+  Write-Output '2) 설치하지 않을게요'
   $choice = Read-WizardChoice -Prompt '선택:' -Default '1'
   switch ($choice) {
+    { $_ -in @('네', '네, 전체 설치할게요', '네 전체 설치할게요', '전체 설치') } {
+      Set-StepStatus -Step 'base-tools' -Status 'in_progress'
+      Invoke-InstallerStep -Id 'prereqs' -Root $Root
+      Invoke-InstallerStep -Id 'packages' -Root $Root
+      Invoke-InstallerStep -Id 'runtimes' -Root $Root
+      Invoke-InstallerStep -Id 'shell' -Root $Root
+      Set-StepStatus -Step 'base-tools' -Status 'complete' -Note "$Platform dry-run=$($script:DryRun)"
+      Set-StepStatus -Step 'shell' -Status 'complete' -Note "$Platform dry-run=$($script:DryRun)"
+    }
     '1' {
       Set-StepStatus -Step 'base-tools' -Status 'in_progress'
       Invoke-InstallerStep -Id 'prereqs' -Root $Root
       Invoke-InstallerStep -Id 'packages' -Root $Root
       Invoke-InstallerStep -Id 'runtimes' -Root $Root
+      Invoke-InstallerStep -Id 'shell' -Root $Root
       Set-StepStatus -Step 'base-tools' -Status 'complete' -Note "$Platform dry-run=$($script:DryRun)"
+      Set-StepStatus -Step 'shell' -Status 'complete' -Note "$Platform dry-run=$($script:DryRun)"
     }
-    '2' {
+    { $_ -in @('아니오', '설치하지 않을게요', '설치하지 않음') } {
       Set-StepStatus -Step 'base-tools' -Status 'skipped' -Note $Platform
+      Set-StepStatus -Step 'shell' -Status 'skipped' -Note $Platform
       Show-Status
       return
     }
-    '3' {
+    '2' {
+      Set-StepStatus -Step 'base-tools' -Status 'skipped' -Note $Platform
+      Set-StepStatus -Step 'shell' -Status 'skipped' -Note $Platform
       Show-Status
       return
     }
@@ -51,19 +67,6 @@ function Invoke-BaseStep {
       Show-Status
       return
     }
-  }
-
-  Write-Step '셸 편의 설정'
-  Write-Info 'PowerShell 자동완성, 프롬프트, 런타임 경로를 설정합니다.'
-  Write-Output '1) 설정하기'
-  Write-Output '2) 나중에 하기'
-  $shellChoice = Read-WizardChoice -Prompt '선택:' -Default '1'
-  if ($shellChoice -eq '1') {
-    Set-StepStatus -Step 'shell' -Status 'in_progress'
-    Invoke-InstallerStep -Id 'shell' -Root $Root
-    Set-StepStatus -Step 'shell' -Status 'complete' -Note "$Platform dry-run=$($script:DryRun)"
-  } else {
-    Set-StepStatus -Step 'shell' -Status 'skipped' -Note $Platform
   }
 }
 

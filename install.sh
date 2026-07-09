@@ -11,6 +11,7 @@
 # Options:
 #   --dry-run        Show what would happen, change nothing.
 #   --yes, -y        Non-interactive: accept defaults, never prompt.
+#   --standard       Beginner/team preset: --yes --skip docker.
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
@@ -28,7 +29,13 @@ set -euo pipefail
 
 REPO_URL="${AI_BOILER_PLATE_REPO:-${BSS_BOILERPLATE_REPO:-${STARTER_KIT_REPO:-https://github.com/socialsolidaritybank/ai-boiler-plate.git}}}"
 REPO_BRANCH="${AI_BOILER_PLATE_BRANCH:-${BSS_BOILERPLATE_BRANCH:-${STARTER_KIT_BRANCH:-main}}}"
-CLONE_DIR="${AI_BOILER_PLATE_DIR:-${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$HOME/ai-boiler-plate}}}"
+STANDARD_REQUESTED=0
+for arg in "$@"; do
+  [[ "$arg" == "--standard" ]] && STANDARD_REQUESTED=1
+done
+DEFAULT_CLONE_DIR="$HOME/ai-boiler-plate"
+[[ "$STANDARD_REQUESTED" == "1" ]] && DEFAULT_CLONE_DIR="$HOME/Documents/Codex/bss-ai-boiler-plate"
+CLONE_DIR="${AI_BOILER_PLATE_DIR:-${BSS_BOILERPLATE_DIR:-${STARTER_KIT_DIR:-$DEFAULT_CLONE_DIR}}}"
 
 # ---------------------------------------------------------------------------
 # Resolve the repo root, or bootstrap by cloning (supports curl | bash).
@@ -52,6 +59,7 @@ resolve_root() {
   if [[ -d "$CLONE_DIR/.git" ]]; then
     git -C "$CLONE_DIR" pull --ff-only origin "$REPO_BRANCH" >&2 || true
   else
+    mkdir -p "$(dirname "$CLONE_DIR")"
     git clone --branch "$REPO_BRANCH" --depth 1 "$REPO_URL" "$CLONE_DIR" >&2
   fi
   echo "$CLONE_DIR"
@@ -108,6 +116,13 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)   export DRY_RUN=1 ;;
     -y|--yes)    export ASSUME_YES=1; DIRECT_MODE=1 ;;
+    --standard)
+      CLASSIC=1
+      DIRECT_MODE=1
+      export ASSUME_YES=1
+      SKIP="${SKIP:+$SKIP,}docker"
+      export BSS_AI_INSTALL_CODEX=1 BSS_AI_INSTALL_CLAUDE=1 BSS_AI_INSTALL_EXTRAS=0 HERMES=0
+      ;;
     --status)    STATUS=1 ;;
     --reset-state) RESET_STATE=1 ;;
     --classic)   CLASSIC=1; DIRECT_MODE=1 ;;
@@ -173,6 +188,22 @@ selected() {
   done
 }
 
+generate_completion_report() {
+  local report_lib="$ROOT/lib/report.sh"
+  if [[ ! -f "$report_lib" ]]; then
+    warn "설치 결과 리포트 생성기를 찾지 못했습니다: $report_lib"
+    return 0
+  fi
+  # shellcheck source=/dev/null
+  source "$report_lib"
+  if bss_generate_report; then
+    info "결과 리포트: $(bss_report_path)"
+    info "HTML 사용 매뉴얼: $(bss_manual_path)"
+  else
+    warn "설치는 끝났지만 결과 리포트/HTML 매뉴얼 생성은 실패했습니다. python3와 state 파일을 확인해 주세요."
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight
 # ---------------------------------------------------------------------------
@@ -194,6 +225,11 @@ for id in $(selected); do
   source "$file"
   "$fn"
 done
+
+if [[ "${DRY_RUN:-0}" != "1" ]]; then
+  step "Install result manual"
+  generate_completion_report
+fi
 
 step "Done."
 if [[ "$DRY_RUN" == "1" ]]; then

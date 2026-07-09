@@ -16,31 +16,26 @@
 
 function Invoke-AiToolsStep {
   param([string]$Root)
-  Write-Step '3단계 AI 도구 선택'
-  Write-Output '1) Codex'
-  Write-Output '2) Claude'
-  Write-Output '3) 둘 다'
-  Write-Output '4) 아직 정하지 않음'
-  Write-Output '5) 직접 입력'
-  $choice = Read-WizardChoice -Prompt '선택:' -Default '4'
+  Write-Step '3단계 AI CLI 도구 선택'
+  Write-Output 'Codex 앱은 이미 설치했다고 보고, 터미널에서 쓰는 CLI 명령만 확인합니다.'
+  Write-Output '1) Codex CLI 설치'
+  Write-Output '2) Claude Code CLI 설치'
+  Write-Output '3) Codex CLI + Claude Code CLI 설치'
+  Write-Output '4) CLI 도구는 설치하지 않음'
+  $choice = Read-WizardChoice -Prompt '선택:' -Default '1'
   $services = @()
   $env:BSS_AI_INSTALL_CODEX = '0'
   $env:BSS_AI_INSTALL_CLAUDE = '0'
+  $env:BSS_AI_INSTALL_MATT = '0'
   $env:BSS_AI_INSTALL_EXTRAS = '0'
   $env:BSS_AI_HELPER_FORCE_INSTALL_PREVIEW = '1'
   switch ($choice) {
-    '1' { $services = @('Codex'); $env:BSS_AI_INSTALL_CODEX = '1' }
-    '2' { $services = @('Claude'); $env:BSS_AI_INSTALL_CLAUDE = '1' }
-    '3' { $services = @('Codex', 'Claude'); $env:BSS_AI_INSTALL_CODEX = '1'; $env:BSS_AI_INSTALL_CLAUDE = '1' }
-    '5' {
-      $raw = Read-WizardChoice -Prompt '서비스 이름:' -Default ''
-      $services = @(Convert-SafeAiServiceNames -Raw $raw)
-      if ($services.Count -eq 0) { $services = @('직접 입력') }
-      Write-Info "지원하지 않는 서비스는 기록만 하고 자동 설치하지 않습니다: $($services -join ', ')"
-    }
+    '1' { $services = @('Codex CLI'); $env:BSS_AI_INSTALL_CODEX = '1' }
+    '2' { $services = @('Claude Code CLI'); $env:BSS_AI_INSTALL_CLAUDE = '1' }
+    '3' { $services = @('Codex CLI', 'Claude Code CLI'); $env:BSS_AI_INSTALL_CODEX = '1'; $env:BSS_AI_INSTALL_CLAUDE = '1' }
     default {
       Add-AiService -Services @()
-      Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note '아직 정하지 않음'
+      Set-StepStatus -Step 'ai-tools' -Status 'skipped' -Note 'CLI 도구 설치하지 않음'
       return
     }
   }
@@ -64,32 +59,25 @@ function Invoke-AiToolsStep {
 
 function Invoke-AddonsStep {
   Write-Step '4단계 추가 도구 추천'
-  $state = Read-HelperState
-  $services = @($state['ai_services'])
-  Write-Output '1) 강한 오케스트레이션, 멀티 서브 에이전트'
-  Write-Output '2) 버그 수정/완료 검증 습관 보강'
-  Write-Output '3) Codex로 긴 자동 설치/수정 작업'
-  Write-Output '4) 고급 품질 워크플로우'
-  Write-Output '5) 추천 없이 마치기'
-  $choice = Read-WizardChoice -Prompt '선택:' -Default '5'
-  $preference = if ($choice -eq '1') { 'orchestration' } elseif ($choice -eq '2') { 'teacher' } elseif ($choice -eq '3') { 'long-work' } elseif ($choice -eq '4') { 'quality' } else { 'none' }
-  $candidates = @(Get-RecommendationCandidates -Services $services -Preference $preference)
-  $id = Get-RecommendationPick -Services $services -Preference $preference
-  if (-not $id -and $candidates.Count -gt 0) { $id = $candidates[0] }
-  if (-not $id) {
-    Write-Info '현재 선택으로는 자동 설치할 수 있는 추가 도구가 없습니다.'
-    Set-StepStatus -Step 'addons' -Status 'skipped' -Note '자동 설치 가능한 추천 없음'
-    return
-  }
-  $seen = @()
-  while ($id) {
-    $seen += $id
+  Write-Output '추가 기능은 하나씩 확인합니다. 각 항목은 설치 또는 설치하지 않음으로 기록합니다.'
+  foreach ($id in @('matt-pocock-skills', 'superpowers', 'lazy-codex', 'oh-my-claudecode')) {
     Show-RecommendationCard -Id $id
-    Write-Output '1) 설치'
-    Write-Output '2) 나중에'
-    Write-Output '3) 설치하지 않음'
-    Write-Output '4) 자세히 보기'
-    Write-Output '5) 상태만 보기'
+    switch ($id) {
+      'matt-pocock-skills' {
+        Write-Output '질문: 무엇부터 해야 할지 잘 모를 때, 체계적으로 설계하고 작업할 수 있게 도와주는 스킬인 Matt Pocock Skills를 설치할까요?'
+      }
+      'superpowers' {
+        Write-Output '질문: 아이디어가 있을 때 아이디어를 구체화해서 작업 계획까지 세워주는 스킬인 Superpowers를 설치할까요?'
+      }
+      'lazy-codex' {
+        Write-Output '질문: Codex를 사용할 때 코딩, 수정, 검증 작업을 구조적으로 도와주는 도구인 Lazy-Codex를 설치할까요?'
+      }
+      'oh-my-claudecode' {
+        Write-Output '질문: Claude Code 사용을 쉽게 도와주는 도구인 Oh-My-Claudecode를 설치할까요?'
+      }
+    }
+    Write-Output '1) 네 설치할게요'
+    Write-Output '2) 설치하지 않을게요'
     $decision = Read-WizardChoice -Prompt '선택:' -Default '2'
     $title = Get-RecommendationTitle -Id $id
     if ($decision -eq '1') {
@@ -97,33 +85,12 @@ function Invoke-AddonsStep {
       if ($status -eq 'complete') { Set-StepStatus -Step 'addons' -Status 'complete' -Note "$title 처리" }
       elseif ($status -eq 'skipped') { Set-StepStatus -Step 'addons' -Status 'skipped' -Note "$title 건너뜀" }
       else { Set-StepStatus -Step 'addons' -Status 'failed' -Note "$title 실패" }
-    } elseif ($decision -eq '3') {
+    } else {
       Set-AddonStatus -Id $id -Title $title -Status 'skipped' -Note '사용자가 설치하지 않음'
       Set-StepStatus -Step 'addons' -Status 'skipped' -Note "$title 설치하지 않음"
-    } elseif ($decision -eq '4') {
-      Show-RecommendationCard -Id $id -Details
-      continue
-    } elseif ($decision -eq '5') {
-      Show-Status
-      continue
-    } else {
-      Set-AddonStatus -Id $id -Title $title -Status 'pending' -Note '나중에'
-      Set-StepStatus -Step 'addons' -Status 'skipped' -Note "$title 나중에"
-    }
-    Write-Output '다른 추천도 볼까요?'
-    Write-Output '1) 네'
-    Write-Output '2) 아니요'
-    $another = Read-WizardChoice -Prompt '선택:' -Default '2'
-    if ($another -ne '1') { return }
-    $id = $null
-    foreach ($candidate in $candidates) {
-      if ($seen -notcontains $candidate) { $id = $candidate; break }
-    }
-    if (-not $id) {
-      Write-Info '지금 조건에서 더 보여드릴 추천은 없습니다.'
-      return
     }
   }
+  Write-Info 'Final Installation Plan(최종 설치 계획)에는 지금까지 선택한 기본 환경, AI 도구, 추가 기능 선택 결과를 포함해야 합니다.'
 }
 
 function Invoke-AddonInstall {

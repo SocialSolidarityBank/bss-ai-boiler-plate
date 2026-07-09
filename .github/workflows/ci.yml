@@ -54,7 +54,8 @@ jobs:
         env:
           AI_BOILER_PLATE_HOME: ${{ runner.temp }}/ai-boiler-plate-home
         run: |
-          chmod +x scripts/qa/*.sh scripts/09-codex-resume.sh scripts/10-report.sh scripts/11-publish-readiness.sh
+          chmod +x scripts/qa/*.sh scripts/*.sh .githooks/pre-commit .githooks/pre-push
+          scripts/qa/goal-mode-gate.sh --quick
           scripts/qa/lane3-all.sh
 
   linux-e2e:

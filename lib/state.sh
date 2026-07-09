@@ -135,9 +135,9 @@ elif action == "ai_services":
     data["ai_services"] = services
     data["aiServices"] = services
     for service in services:
-        if service == "Codex":
+        if service in ("Codex", "Codex CLI"):
             upsert_tool("Codex CLI", "complete", "ai")
-        elif service == "Claude":
+        elif service in ("Claude", "Claude Code CLI"):
             upsert_tool("Claude Code", "complete", "ai")
         else:
             upsert_tool(service, "recorded", "ai", "자동 설치 없음")
@@ -146,9 +146,9 @@ elif action == "ai_service_status":
     note = args[1] if len(args) > 1 else ""
     services = [x for x in args[2:] if x]
     for service in services:
-        if service == "Codex":
+        if service in ("Codex", "Codex CLI"):
             upsert_tool("Codex CLI", status, "ai", note)
-        elif service == "Claude":
+        elif service in ("Claude", "Claude Code CLI"):
             upsert_tool("Claude Code", status, "ai", note)
         else:
             upsert_tool(service, status, "ai", note)
