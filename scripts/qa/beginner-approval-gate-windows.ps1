@@ -193,6 +193,7 @@ Start-Wizard -Platform 'Windows' -Root (Join-Path $Root 'windows')
     if ($StaleState) {
       $stalePath = Join-Path $helperHome 'state.json'
       $staleAfter = if (Test-Path $stalePath) { (Get-Content -Raw -Path $stalePath).Replace("`r", '').Replace("`n", ' ') } else { 'MISSING' }
+      Write-Output 'QA_STATUS_VIEW' | Add-Content -Path $OutPath
       Add-Content -Path $OutPath -Value 'STALE_STATE_PROBE=malformed-state-preserved'
       Add-Content -Path $OutPath -Value "STALE_STATE_BEFORE=$staleBefore"
       Add-Content -Path $OutPath -Value "STALE_STATE_AFTER=$staleAfter"
