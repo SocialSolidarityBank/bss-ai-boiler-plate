@@ -74,14 +74,12 @@ function Invoke-Scenario {
 
   $helperHome = New-TempDir
   $scenarioDir = New-TempDir
-  $staleBefore = $null
   $inputPath = Join-Path $scenarioDir 'inputs.txt'
   $scenarioPath = Join-Path $scenarioDir 'scenario.ps1'
   Set-Content -Path $inputPath -Value $Inputs -Encoding UTF8
   if ($StaleState) {
     $stalePath = Join-Path $helperHome 'state.json'
     Set-Content -Path $stalePath -Value '{ stale state' -Encoding UTF8
-    $staleBefore = (Get-Content -Raw -Path $stalePath).Replace("`r", '').Replace("`n", ' ')
   }
 
   $scenario = @'
@@ -89,13 +87,25 @@ param(
   [Parameter(Mandatory)][string]$Root,
   [Parameter(Mandatory)][string]$HelperHome,
   [Parameter(Mandatory)][string]$InputPath,
+  [string]$StaleStateProbe = '0',
   [string]$MisleadingSuccess = '0'
 )
 $ErrorActionPreference = 'Stop'
 $script:DryRun = $true
 $script:AssumeYes = $false
+$script:QaExecutionStarted = $false
+$script:QaStatusViewed = $false
 $env:AI_BOILER_PLATE_HOME = $HelperHome
 $env:BSS_AI_HELPER_HOME = $HelperHome
+
+function Get-QaStateSnapshot {
+  $path = Join-Path $HelperHome 'state.json'
+  if (Test-Path $path) { return (Get-Content -Raw -Path $path).Replace("`r", '').Replace("`n", ' ') }
+  return 'MISSING'
+}
+
+$script:QaStaleBefore = if ($StaleStateProbe -eq '1') { Get-QaStateSnapshot } else { '' }
+
 . (Join-Path $Root 'windows\scripts\lib.ps1')
 . (Join-Path $Root 'windows\scripts\state.ps1')
 . (Join-Path $Root 'windows\scripts\recommendations.ps1')
@@ -114,6 +124,7 @@ function Read-WizardChoice {
 
 function Invoke-InstallerStep {
   param([Parameter(Mandatory)][string]$Id, [Parameter(Mandatory)][string]$Root)
+  $script:QaExecutionStarted = $true
   Write-Output "QA_EXECUTE_MARKER windows:installer:$Id"
   Set-StepStatus -Step $Id -Status 'complete' -Note 'qa stub'
 }
@@ -123,6 +134,7 @@ function Invoke-GithubStep {
   $choice = Read-WizardChoice -Prompt '선택:' -Default '3'
   if ($MisleadingSuccess -eq '1') { Write-Output 'QA_MISLEADING_SUCCESS_OUTPUT windows:github-present' }
   if ($choice -eq '1') {
+    $script:QaExecutionStarted = $true
     Write-Output 'QA_EXECUTE_MARKER windows:github'
     Set-StepStatus -Step 'github' -Status 'complete' -Note 'qa stub'
   } else {
@@ -135,6 +147,7 @@ function Invoke-AiToolsStep {
   Write-Step '3단계 AI CLI 도구 선택'
   $choice = Read-WizardChoice -Prompt '선택:' -Default '4'
   if ($choice -ne '4') {
+    $script:QaExecutionStarted = $true
     Write-Output "QA_EXECUTE_MARKER windows:ai-tools:$choice"
     Set-StepStatus -Step 'ai-tools' -Status 'complete' -Note 'qa stub'
   } else {
@@ -144,6 +157,7 @@ function Invoke-AiToolsStep {
 
 function Invoke-AddonInstall {
   param([string]$Id, [string]$Title)
+  $script:QaExecutionStarted = $true
   Write-Output "QA_EXECUTE_MARKER windows:addon:$Id"
   Set-AddonStatus -Id $Id -Title $Title -Status 'complete' -Note 'qa stub'
   return 'complete'
@@ -158,10 +172,12 @@ function Invoke-WizardPlan {
     }
   }
   if ($Plan.github.choice -eq '1') {
+    $script:QaExecutionStarted = $true
     Write-Output 'QA_EXECUTE_MARKER windows:github'
     Set-StepStatus -Step 'github' -Status 'complete' -Note 'qa stub'
   }
   if ($Plan.ai.choice -ne '4') {
+    $script:QaExecutionStarted = $true
     Write-Output "QA_EXECUTE_MARKER windows:ai-tools:$($Plan.ai.choice)"
     Set-StepStatus -Step 'ai-tools' -Status 'complete' -Note 'qa stub'
   }
@@ -173,10 +189,26 @@ function Invoke-WizardPlan {
 }
 
 function Show-Status {
-  Write-Output 'QA_STATUS_VIEW'
+  $script:QaStatusViewed = $true
+  if ($StaleStateProbe -ne '1') {
+    Write-Output 'QA_STATUS_VIEW'
+  }
 }
 
 Start-Wizard -Platform 'Windows' -Root (Join-Path $Root 'windows')
+
+if ($StaleStateProbe -eq '1') {
+  $staleAfter = Get-QaStateSnapshot
+  if (-not $script:QaStatusViewed) { throw 'stale state probe did not reach status view' }
+  if ($script:QaExecutionStarted) { throw 'stale state probe unexpectedly executed installer steps' }
+  if ($script:QaStaleBefore -ne $staleAfter) { throw 'stale state probe mutated malformed state' }
+  Write-Output 'QA_STATUS_VIEW'
+  Write-Output 'STALE_STATE_PROBE=malformed-state-preserved'
+  Write-Output "STALE_STATE_BEFORE=$script:QaStaleBefore"
+  Write-Output "STALE_STATE_AFTER=$staleAfter"
+  Write-Output 'STALE_STATE_PRESERVED=yes'
+  Write-Output 'Scenario exit code: 0'
+}
 '@
   Set-Content -Path $scenarioPath -Value $scenario -Encoding UTF8
 
@@ -184,25 +216,13 @@ Start-Wizard -Platform 'Windows' -Root (Join-Path $Root 'windows')
   try {
     $exe = (Get-Command powershell.exe -ErrorAction Stop).Source
     $misleadingFlag = if ($MisleadingSuccess.IsPresent) { '1' } else { '0' }
-    & $exe -NoProfile -ExecutionPolicy Bypass -File $scenarioPath -Root $Root -HelperHome $helperHome -InputPath $inputPath -MisleadingSuccess $misleadingFlag > $OutPath 2>&1
+    $staleProbeFlag = if ($StaleState.IsPresent) { '1' } else { '0' }
+    & $exe -NoProfile -ExecutionPolicy Bypass -File $scenarioPath -Root $Root -HelperHome $helperHome -InputPath $inputPath -StaleStateProbe $staleProbeFlag -MisleadingSuccess $misleadingFlag > $OutPath 2>&1
     $exitCode = $LASTEXITCODE
   } catch {
     $exitCode = 1
     $_ | Out-File -FilePath $OutPath -Append -Encoding UTF8
   } finally {
-    if ($StaleState) {
-      $stalePath = Join-Path $helperHome 'state.json'
-      $staleAfter = if (Test-Path $stalePath) { (Get-Content -Raw -Path $stalePath).Replace("`r", '').Replace("`n", ' ') } else { 'MISSING' }
-      Add-Content -Path $OutPath -Value 'QA_STATUS_VIEW'
-      Add-Content -Path $OutPath -Value 'STALE_STATE_PROBE=malformed-state-preserved'
-      Add-Content -Path $OutPath -Value "STALE_STATE_BEFORE=$staleBefore"
-      Add-Content -Path $OutPath -Value "STALE_STATE_AFTER=$staleAfter"
-      $preserved = if ($staleBefore -eq $staleAfter) { 'yes' } else { 'no' }
-      Add-Content -Path $OutPath -Value "STALE_STATE_PRESERVED=$preserved"
-      if ($exitCode -eq 0) {
-        Add-Content -Path $OutPath -Value 'Scenario exit code: 0'
-      }
-    }
     Remove-Item -LiteralPath $helperHome -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $scenarioDir -Recurse -Force -ErrorAction SilentlyContinue
     Add-Content -Path $OutPath -Value ""
