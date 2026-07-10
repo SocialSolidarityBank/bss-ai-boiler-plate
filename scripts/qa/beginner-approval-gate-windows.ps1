@@ -193,7 +193,7 @@ Start-Wizard -Platform 'Windows' -Root (Join-Path $Root 'windows')
     if ($StaleState) {
       $stalePath = Join-Path $helperHome 'state.json'
       $staleAfter = if (Test-Path $stalePath) { (Get-Content -Raw -Path $stalePath).Replace("`r", '').Replace("`n", ' ') } else { 'MISSING' }
-      Write-Output 'QA_STATUS_VIEW' | Add-Content -Path $OutPath
+      Add-Content -Path $OutPath -Value 'QA_STATUS_VIEW'
       Add-Content -Path $OutPath -Value 'STALE_STATE_PROBE=malformed-state-preserved'
       Add-Content -Path $OutPath -Value "STALE_STATE_BEFORE=$staleBefore"
       Add-Content -Path $OutPath -Value "STALE_STATE_AFTER=$staleAfter"
@@ -235,10 +235,10 @@ function Assert-BaselineContract {
 
 function Assert-StaleStateContract {
   param([Parameter(Mandatory)][string]$Path)
-  Assert-Contains -Path $Path -Pattern 'QA_STATUS_VIEW'
+  Assert-Contains -Path $Path -Pattern '(?m)^QA_STATUS_VIEW\r?$'
   Assert-Contains -Path $Path -Pattern 'STALE_STATE_PROBE=malformed-state-preserved'
   Assert-Contains -Path $Path -Pattern 'STALE_STATE_PRESERVED=yes'
-  Assert-Contains -Path $Path -Pattern 'Scenario exit code: 0'
+  Assert-Contains -Path $Path -Pattern '(?m)^Scenario exit code: 0\r?$'
   Assert-NotContains -Path $Path -Pattern 'QA_EXECUTE_MARKER'
 }
 
