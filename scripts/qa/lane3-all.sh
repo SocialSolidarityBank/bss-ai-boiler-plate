@@ -83,7 +83,7 @@ case "$mode" in
     bash -n "$ROOT/install.sh" "$ROOT/linux/install.sh" "$ROOT/uninstall.sh" "$ROOT/linux/uninstall.sh" "$ROOT"/lib/*.sh "$ROOT"/scripts/*.sh "$ROOT"/scripts/qa/*.sh "$ROOT/config/zshrc.block.sh" "$ROOT/linux/config/zshrc.block.sh"
     check_powershell
     check_ci
-    git -C "$ROOT" diff --check
+    qa_git -C "$ROOT" diff --check
     note "PASS G012"
     ;;
   *)

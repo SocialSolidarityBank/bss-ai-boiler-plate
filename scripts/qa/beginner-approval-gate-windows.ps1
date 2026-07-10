@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('Regression', 'Baseline', 'Adversarial')]
+  [ValidateSet('Regression', 'Baseline', 'Adversarial', 'MalformedStandard')]
   [string]$Mode = 'Regression'
 )
 
@@ -14,6 +14,7 @@ New-Item -ItemType Directory -Force -Path $EvidenceDir | Out-Null
 $TranscriptPath = Join-Path $EvidenceDir 'task-1-windows-beginner-approval-gate.txt'
 $BaselineTranscriptPath = Join-Path $EvidenceDir 'task-1-windows-baseline-current-early-execution.txt'
 $AdversarialTranscriptPath = Join-Path $EvidenceDir 'task-1-windows-adversarial-probes.txt'
+$MalformedStandardTranscriptPath = Join-Path $EvidenceDir 'task-1-windows-malformed-standard-plan.txt'
 $ApprovalWord = -join @([char]0xC2B9, [char]0xC778)
 $ProceedWord = -join @([char]0xC9C4, [char]0xD589)
 
@@ -263,6 +264,60 @@ function Invoke-DirtyWorktreeProbe {
   return 0
 }
 
+function Invoke-StandardPlanScenario {
+  param(
+    [Parameter(Mandatory)][string]$OutPath,
+    [Parameter(Mandatory)][string]$StateJson
+  )
+
+  $helperHome = New-TempDir
+  $statePath = Join-Path $helperHome 'state.json'
+  Set-Content -Path $statePath -Value $StateJson -Encoding UTF8
+
+  $oldAiHome = $env:AI_BOILER_PLATE_HOME
+  $oldBssHome = $env:BSS_AI_HELPER_HOME
+  $oldErrorActionPreference = $ErrorActionPreference
+  $exitCode = 0
+  try {
+    $env:AI_BOILER_PLATE_HOME = $helperHome
+    $env:BSS_AI_HELPER_HOME = $helperHome
+    $ErrorActionPreference = 'Continue'
+    $exe = (Get-Command powershell.exe -ErrorAction Stop).Source
+    & $exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'windows\install.ps1') -Standard -DryRun > $OutPath 2>&1
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $exitCode = 1
+    $_ | Out-File -FilePath $OutPath -Append -Encoding UTF8
+  } finally {
+    $ErrorActionPreference = $oldErrorActionPreference
+    $env:AI_BOILER_PLATE_HOME = $oldAiHome
+    $env:BSS_AI_HELPER_HOME = $oldBssHome
+    Remove-Item -LiteralPath $helperHome -Recurse -Force -ErrorAction SilentlyContinue
+    Add-Content -Path $OutPath -Value ""
+    Add-Content -Path $OutPath -Value "Cleanup receipt: removed helper_home=$helperHome"
+    Add-Content -Path $OutPath -Value "Scenario exit code: $exitCode"
+  }
+  return $exitCode
+}
+
+function Assert-MalformedStandardContract {
+  param([Parameter(Mandatory)][string]$Path)
+  $text = Get-Content -Raw -Path $Path
+  if ($text -notmatch 'Scenario exit code: [1-9][0-9]*') { Fail-Qa "malformed standard plan unexpectedly exited 0 in $Path" }
+  Assert-Contains -Path $Path -Pattern 'Scenario exit code: 2'
+  Assert-Contains -Path $Path -Pattern 'Invalid approved installationPlan schema'
+  Assert-Contains -Path $Path -Pattern 'no install steps were started'
+  Assert-NotContains -Path $Path -Pattern 'Using approved Final Installation Plan'
+  Assert-NotContains -Path $Path -Pattern 'DRY-RUN: no changes will be made'
+  Assert-NotContains -Path $Path -Pattern '== ai-boiler-plate'
+  Assert-NotContains -Path $Path -Pattern 'steps:'
+  Assert-NotContains -Path $Path -Pattern 'Prerequisites: winget'
+  Assert-NotContains -Path $Path -Pattern 'CLI tools \+ developer toolchain'
+  Assert-NotContains -Path $Path -Pattern 'Runtimes: mise'
+  Assert-NotContains -Path $Path -Pattern '\[dry-run\] winget'
+  Assert-NotContains -Path $Path -Pattern '\[dry-run\] would install via mise'
+}
+
 switch ($Mode) {
   'Baseline' {
     [void](Invoke-Scenario -OutPath $BaselineTranscriptPath -Inputs @('2', '1', '3', '4', '1', '2', '2', '2', $ApprovalWord))
@@ -295,6 +350,61 @@ switch ($Mode) {
     Remove-Item -LiteralPath "$AdversarialTranscriptPath.malformed", "$AdversarialTranscriptPath.stale", "$AdversarialTranscriptPath.dirty", "$AdversarialTranscriptPath.misleading" -Force -ErrorAction SilentlyContinue
     Add-Content -Path $AdversarialTranscriptPath -Value 'Cleanup receipt: removed adversarial scratch transcripts'
     Write-Output "PASS adversarial-probes $AdversarialTranscriptPath"
+  }
+  'MalformedStandard' {
+    Set-Content -Path $MalformedStandardTranscriptPath -Value 'Malformed approved Windows Standard plan probes' -Encoding UTF8
+
+    $addonsArrayPath = "$MalformedStandardTranscriptPath.addons-array"
+    $addonsArrayJson = @'
+{
+  "installationPlan": {
+    "schemaVersion": 1,
+    "selectedOS": "Windows",
+    "workspaceFolder": "C:\\work",
+    "baseEnvironment": "skip",
+    "aiCliTools": [],
+    "addons": ["lazy-codex"],
+    "executionCommand": ".\\windows\\install.ps1 -Standard",
+    "approvalStatus": "approved",
+    "approvedAt": "2026-07-10T00:00:00Z",
+    "secretPolicy": "No tokens, OAuth codes, passwords, private keys, or device codes are stored."
+  }
+}
+'@
+    [void](Invoke-StandardPlanScenario -OutPath $addonsArrayPath -StateJson $addonsArrayJson)
+    Assert-MalformedStandardContract -Path $addonsArrayPath
+    Add-Content -Path $MalformedStandardTranscriptPath -Value 'PASS addons non-map is rejected before install execution'
+
+    $wrongTypesPath = "$MalformedStandardTranscriptPath.wrong-types"
+    $wrongTypesJson = @'
+{
+  "installationPlan": {
+    "schemaVersion": "1",
+    "selectedOS": ["Windows"],
+    "workspaceFolder": ["C:\\work"],
+    "baseEnvironment": {"mode": "skip"},
+    "aiCliTools": "Codex CLI",
+    "addons": {
+      "lazy-codex": {
+        "title": ["Lazy-Codex"],
+        "selected": "true",
+        "decision": ["install"]
+      }
+    },
+    "executionCommand": [".\\windows\\install.ps1 -Standard"],
+    "approvalStatus": "approved",
+    "approvedAt": ["2026-07-10T00:00:00Z"],
+    "secretPolicy": false
+  }
+}
+'@
+    [void](Invoke-StandardPlanScenario -OutPath $wrongTypesPath -StateJson $wrongTypesJson)
+    Assert-MalformedStandardContract -Path $wrongTypesPath
+    Add-Content -Path $MalformedStandardTranscriptPath -Value 'PASS required fields with wrong types are rejected before install execution'
+
+    Remove-Item -LiteralPath $addonsArrayPath, $wrongTypesPath -Force -ErrorAction SilentlyContinue
+    Add-Content -Path $MalformedStandardTranscriptPath -Value 'Cleanup receipt: removed malformed standard scratch transcripts'
+    Write-Output "PASS malformed-standard-plan $MalformedStandardTranscriptPath"
   }
   default {
     [void](Invoke-Scenario -OutPath $TranscriptPath -Inputs @('2', '1', '3', '4', '1', '2', '2', '2', $ApprovalWord))

@@ -237,6 +237,47 @@ function Get-InstallationPlanStatus {
   return 'missing'
 }
 
+function Get-InstallationPlanSchemaError {
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan')) { return 'installationPlan must be an object/map' }
+  $plan = $state['installationPlan']
+  if ($null -eq $plan -or -not ($plan -is [System.Collections.IDictionary])) { return 'installationPlan must be an object/map' }
+
+  foreach ($field in @('selectedOS', 'workspaceFolder', 'baseEnvironment', 'executionCommand', 'approvalStatus', 'approvedAt', 'secretPolicy')) {
+    if (-not $plan.ContainsKey($field) -or -not ($plan[$field] -is [string])) {
+      return "installationPlan.$field must be a string"
+    }
+  }
+
+  if (-not $plan.ContainsKey('schemaVersion') -or -not ($plan['schemaVersion'] -is [int] -or $plan['schemaVersion'] -is [long])) {
+    return 'installationPlan.schemaVersion must be a number'
+  }
+  if (-not $plan.ContainsKey('aiCliTools') -or -not ($plan['aiCliTools'] -is [System.Array])) {
+    return 'installationPlan.aiCliTools must be an array'
+  }
+  if (-not $plan.ContainsKey('addons') -or -not ($plan['addons'] -is [System.Collections.IDictionary])) {
+    return 'installationPlan.addons must be an object/map'
+  }
+
+  foreach ($key in @($plan['addons'].Keys)) {
+    $addon = $plan['addons'][$key]
+    if ($null -eq $addon -or -not ($addon -is [System.Collections.IDictionary])) {
+      return "installationPlan.addons.$key must be an object/map"
+    }
+    if (-not $addon.ContainsKey('title') -or -not ($addon['title'] -is [string])) {
+      return "installationPlan.addons.$key.title must be a string"
+    }
+    if (-not $addon.ContainsKey('selected') -or -not ($addon['selected'] -is [bool])) {
+      return "installationPlan.addons.$key.selected must be a boolean"
+    }
+    if (-not $addon.ContainsKey('decision') -or -not ($addon['decision'] -is [string])) {
+      return "installationPlan.addons.$key.decision must be a string"
+    }
+  }
+
+  return ''
+}
+
 function Get-InstallationPlanField {
   param([Parameter(Mandatory)][string]$Field)
   $state = Read-HelperState

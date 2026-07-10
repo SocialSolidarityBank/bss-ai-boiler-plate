@@ -192,6 +192,11 @@ function Use-ApprovedStandardPlan {
     Stop-StandardPlan 'No approved installationPlan exists, so no install steps were started.'
   }
 
+  $schemaError = Get-InstallationPlanSchemaError
+  if ($schemaError) {
+    Stop-StandardPlan "Invalid approved installationPlan schema: $schemaError; no install steps were started."
+  }
+
   $planOs = Get-InstallationPlanField -Field 'selectedOS'
   if ($planOs -ne 'Windows') {
     Stop-StandardPlan "The approved installationPlan is for '$planOs', not Windows."

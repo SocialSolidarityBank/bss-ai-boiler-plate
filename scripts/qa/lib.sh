@@ -15,6 +15,261 @@ note() {
   printf '%s\n' "$*"
 }
 
+qa_is_wsl() {
+  [[ -r /proc/version ]] && grep -qiE 'microsoft|wsl' /proc/version
+}
+
+qa_find_native_git_exe() {
+  local path
+  if command -v git.exe >/dev/null 2>&1; then
+    command -v git.exe
+    return
+  fi
+
+  for path in \
+    "/mnt/c/Program Files/Git/cmd/git.exe" \
+    "/mnt/c/Program Files/Git/bin/git.exe" \
+    "/mnt/c/Program Files/Git/mingw64/bin/git.exe"; do
+    if [[ -x "$path" ]]; then
+      printf '%s\n' "$path"
+      return
+    fi
+  done
+
+  return 1
+}
+
+qa_strip_cr() {
+  local value="$1"
+  value="${value//$'\r'/}"
+  printf '%s\n' "$value"
+}
+
+qa_to_wsl_drive_path() {
+  local path drive rest
+  path="$(qa_strip_cr "$1")"
+  path="${path//\\//}"
+
+  case "$path" in
+    [A-Za-z]:*)
+      drive="${path:0:1}"
+      rest="${path:2}"
+      while [[ "$rest" == /* ]]; do
+        rest="${rest#/}"
+      done
+      printf '/mnt/%s' "${drive,,}"
+      if [[ -n "$rest" ]]; then
+        printf '/%s' "$rest"
+      fi
+      printf '\n'
+      ;;
+    /mnt/[A-Za-z]|/mnt/[A-Za-z]/*)
+      drive="${path:5:1}"
+      rest="${path:6}"
+      printf '/mnt/%s%s\n' "${drive,,}" "$rest"
+      ;;
+    /[A-Za-z]|/[A-Za-z]/*)
+      drive="${path:1:1}"
+      rest="${path:2}"
+      while [[ "$rest" == /* ]]; do
+        rest="${rest#/}"
+      done
+      printf '/mnt/%s' "${drive,,}"
+      if [[ -n "$rest" ]]; then
+        printf '/%s' "$rest"
+      fi
+      printf '\n'
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
+qa_to_windows_path() {
+  local path drive rest
+  path="$(qa_strip_cr "$1")"
+  path="${path//\\//}"
+
+  case "$path" in
+    [A-Za-z]:*)
+      drive="${path:0:1}"
+      rest="${path:2}"
+      while [[ "$rest" == /* ]]; do
+        rest="${rest#/}"
+      done
+      printf '%s:/' "${drive^^}"
+      if [[ -n "$rest" ]]; then
+        printf '%s' "$rest"
+      fi
+      printf '\n'
+      ;;
+    /mnt/[A-Za-z]|/mnt/[A-Za-z]/*)
+      drive="${path:5:1}"
+      rest="${path:6}"
+      while [[ "$rest" == /* ]]; do
+        rest="${rest#/}"
+      done
+      printf '%s:/' "${drive^^}"
+      if [[ -n "$rest" ]]; then
+        printf '%s' "$rest"
+      fi
+      printf '\n'
+      ;;
+    /[A-Za-z]|/[A-Za-z]/*)
+      drive="${path:1:1}"
+      rest="${path:2}"
+      while [[ "$rest" == /* ]]; do
+        rest="${rest#/}"
+      done
+      printf '%s:/' "${drive^^}"
+      if [[ -n "$rest" ]]; then
+        printf '%s' "$rest"
+      fi
+      printf '\n'
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
+qa_arg_cwd() {
+  local -a args=("$@")
+  local i
+  for ((i = 0; i < ${#args[@]}; i++)); do
+    case "${args[$i]}" in
+      -C)
+        if ((i + 1 < ${#args[@]})); then
+          qa_strip_cr "${args[$((i + 1))]}"
+          return 0
+        fi
+        ;;
+      -C?*)
+        qa_strip_cr "${args[$i]#-C}"
+        return 0
+        ;;
+    esac
+  done
+  return 1
+}
+
+qa_is_windows_path() {
+  local path
+  path="$(qa_strip_cr "$1")"
+  case "$path" in
+    [A-Za-z]:/*|[A-Za-z]:\\*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+qa_is_wsl_drive_path() {
+  local path
+  path="$(qa_to_wsl_drive_path "$1")"
+  case "$path" in
+    /mnt/[A-Za-z]|/mnt/[A-Za-z]/*|/[A-Za-z]|/[A-Za-z]/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+qa_has_windows_gitdir_file() {
+  local root git_file
+  root="$(qa_to_wsl_drive_path "$1")"
+  git_file="$root/.git"
+  [[ -f "$git_file" ]] || return 1
+  grep -Eq '^gitdir: [A-Za-z]:[\\/]' "$git_file"
+}
+
+qa_should_use_native_git() {
+  local root
+  root="$(qa_to_wsl_drive_path "$1")"
+  qa_is_wsl || return 1
+  qa_is_wsl_drive_path "$root" || return 1
+  qa_has_windows_gitdir_file "$root"
+}
+
+qa_git_args_for_native() {
+  local -a args=("$@")
+  local i
+  for ((i = 0; i < ${#args[@]}; i++)); do
+    case "${args[$i]}" in
+      -C)
+        printf '%s\0' "-C"
+        if ((i + 1 < ${#args[@]})); then
+          printf '%s\0' "$(qa_to_windows_path "${args[$((i + 1))]}")"
+          ((i += 1))
+        fi
+        ;;
+      -C?*)
+        printf '%s\0' "-C$(qa_to_windows_path "${args[$i]#-C}")"
+        ;;
+      *)
+        printf '%s\0' "${args[$i]}"
+        ;;
+    esac
+  done
+}
+
+qa_git() {
+  local -a args=("$@")
+  local root_for_dispatch native_git
+
+  if ! root_for_dispatch="$(qa_arg_cwd "${args[@]}")"; then
+    root_for_dispatch="${QA_GIT_ROOT:-${ROOT:-}}"
+    if [[ -n "$root_for_dispatch" ]]; then
+      args=(-C "$root_for_dispatch" "${args[@]}")
+    fi
+  fi
+
+  if [[ -n "${root_for_dispatch:-}" ]] \
+    && qa_should_use_native_git "$root_for_dispatch" \
+    && native_git="$(qa_find_native_git_exe)"; then
+    local -a native_args=()
+    while IFS= read -r -d '' arg; do
+      native_args+=("$arg")
+    done < <(qa_git_args_for_native "${args[@]}")
+    "$native_git" "${native_args[@]}"
+    return
+  fi
+
+  command git "${args[@]}"
+}
+
+qa_git_backend() {
+  local -a args=("$@")
+  local root_for_dispatch native_git win_root
+
+  if ! root_for_dispatch="$(qa_arg_cwd "${args[@]}")"; then
+    root_for_dispatch="${QA_GIT_ROOT:-${ROOT:-}}"
+  fi
+
+  if [[ -n "${root_for_dispatch:-}" ]] \
+    && qa_should_use_native_git "$root_for_dispatch" \
+    && native_git="$(qa_find_native_git_exe)"; then
+    win_root="$(qa_to_windows_path "$root_for_dispatch")"
+    printf 'native-windows-git: %s -C %s\n' "$native_git" "$win_root"
+  elif [[ -n "${root_for_dispatch:-}" ]]; then
+    printf 'posix-git: git -C %s\n' "$root_for_dispatch"
+  else
+    printf 'posix-git: git\n'
+  fi
+}
+
+export -f \
+  qa_is_wsl \
+  qa_find_native_git_exe \
+  qa_strip_cr \
+  qa_to_wsl_drive_path \
+  qa_to_windows_path \
+  qa_arg_cwd \
+  qa_is_windows_path \
+  qa_is_wsl_drive_path \
+  qa_has_windows_gitdir_file \
+  qa_should_use_native_git \
+  qa_git_args_for_native \
+  qa_git \
+  qa_git_backend
+
 assert_file() {
   local path="$1"
   [[ -f "$path" ]] || fail "missing file: $path"

@@ -13,11 +13,13 @@ case "$mode" in
   --quick|quick|"") mode="quick" ;;
   --full|full) mode="full" ;;
   --spec|spec) mode="spec" ;;
+  --path-checks|path-checks) mode="path-checks" ;;
   -h|--help)
-    printf 'Usage: scripts/qa/goal-mode-gate.sh [--quick|--full|--spec]\n'
+    printf 'Usage: scripts/qa/goal-mode-gate.sh [--quick|--full|--spec|--path-checks]\n'
     printf '  --quick  Spec contract + syntax + focused beginner workflow QA.\n'
     printf '  --full   Quick gate + full lane3-all QA.\n'
     printf '  --spec   Spec contract only.\n'
+    printf '  --path-checks  Focused Windows path conversion + parser QA.\n'
     exit 0
     ;;
   *) fail "unknown mode: $mode" ;;
@@ -54,13 +56,76 @@ run_gate_cmd() {
   fi
 }
 
+is_wsl() {
+  [[ -r /proc/sys/kernel/osrelease ]] && grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease
+}
+
+is_wsl_windows_drive_root() {
+  is_wsl || return 1
+  case "$ROOT" in
+    /mnt/[A-Za-z]|/mnt/[A-Za-z]/*|/[A-Za-z]|/[A-Za-z]/*) ;;
+    *) return 1 ;;
+  esac
+}
+
+wsl_windows_root() {
+  local win_root
+  is_wsl_windows_drive_root || return 1
+  command -v wslpath >/dev/null 2>&1 || return 1
+  win_root="$(wslpath -w "$ROOT" 2>/dev/null)" || return 1
+  case "$win_root" in
+    [A-Za-z]:\\*|[A-Za-z]:/*)
+      printf '%s\n' "$win_root"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+find_native_git_exe() {
+  local path
+  if command -v git.exe >/dev/null 2>&1; then
+    command -v git.exe
+    return
+  fi
+
+  for path in \
+    "/mnt/c/Program Files/Git/cmd/git.exe" \
+    "/mnt/c/Program Files/Git/bin/git.exe" \
+    "/mnt/c/Program Files/Git/mingw64/bin/git.exe"; do
+    if [[ -x "$path" ]]; then
+      printf '%s\n' "$path"
+      return
+    fi
+  done
+
+  return 1
+}
+
 goal_git() {
-  if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  local native_git win_root
+  if win_root="$(wsl_windows_root)" && native_git="$(find_native_git_exe)"; then
+    "$native_git" -C "$win_root" "$@"
+  elif git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
     git -C "$ROOT" "$@"
   elif command -v git.exe >/dev/null 2>&1; then
     (cd "$ROOT" && git.exe "$@")
   else
     git -C "$ROOT" "$@"
+  fi
+}
+
+goal_git_backend() {
+  local native_git win_root
+  if win_root="$(wsl_windows_root)" && native_git="$(find_native_git_exe)"; then
+    printf 'native-windows-git: %s -C %s\n' "$native_git" "$win_root"
+  elif git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    printf 'posix-git: git -C %s\n' "$ROOT"
+  elif command -v git.exe >/dev/null 2>&1; then
+    printf 'git-exe-cwd: git.exe in %s\n' "$ROOT"
+  else
+    printf 'fallback-git: git -C %s\n' "$ROOT"
   fi
 }
 
@@ -157,6 +222,13 @@ check_diff_whitespace() {
 
 to_windows_path() {
   local path="$1"
+  case "$path" in
+    [A-Za-z]:/*|[A-Za-z]:\\*|\\\\*|//*)
+      printf '%s\n' "$path"
+      return
+      ;;
+  esac
+
   if command -v cygpath >/dev/null 2>&1; then
     cygpath -w "$path"
   elif command -v wslpath >/dev/null 2>&1; then
@@ -164,6 +236,70 @@ to_windows_path() {
   else
     printf '%s\n' "$path"
   fi
+}
+
+check_to_windows_path_contract() {
+  local evidence="$EVIDENCE_DIR/goal-gate-to-windows-path.txt"
+  local path actual
+  local windows_paths=(
+    "C:/Users/SSBAILAPTOP/.git/worktrees/example"
+    "C:\\Users\\SSBAILAPTOP\\.git\\worktrees\\example"
+    "//server/share/repo"
+    "\\\\server\\share\\repo"
+  )
+
+  : > "$evidence"
+  for path in "${windows_paths[@]}"; do
+    actual="$(to_windows_path "$path")"
+    printf 'IDEMPOTENT: %s -> %s\n' "$path" "$actual" >> "$evidence"
+    [[ "$actual" == "$path" ]] || goal_fail "to_windows_path changed an already-Windows path: $path -> $actual"
+  done
+
+  if command -v wslpath >/dev/null 2>&1 && [[ -d /mnt/c ]]; then
+    path="/mnt/c/Users"
+    actual="$(to_windows_path "$path")"
+    printf 'WSL_CONVERT: %s -> %s\n' "$path" "$actual" >> "$evidence"
+    [[ "$actual" != "$path" ]] || goal_fail "to_windows_path did not convert WSL path: $path"
+    case "$actual" in
+      [A-Za-z]:\\*|[A-Za-z]:/*) ;;
+      *) goal_fail "to_windows_path produced a non-Windows path for WSL input: $actual" ;;
+    esac
+  fi
+
+  note "PASS GOAL-GATE to-windows-path $evidence"
+}
+
+check_goal_git_contract() {
+  local evidence="$EVIDENCE_DIR/goal-gate-git-path.txt"
+  local git_dir git_root
+  git_dir="$(goal_git rev-parse --git-dir)" || goal_fail "goal_git could not read the worktree git dir"
+  git_root="$(goal_git rev-parse --show-toplevel)" || goal_fail "goal_git could not read the worktree root"
+  goal_git_backend > "$evidence"
+  printf 'GIT_DIR: %s\n' "$git_dir" >> "$evidence"
+  printf 'GIT_ROOT: %s\n' "$git_root" >> "$evidence"
+  printf 'ROOT: %s\n' "$ROOT" >> "$evidence"
+  case "$git_dir" in
+    "$ROOT"/[A-Za-z]:*)
+      goal_fail "goal_git returned mixed worktree/gitdir path: $git_dir"
+      ;;
+  esac
+  if is_wsl_windows_drive_root; then
+    if ! grep -Eq '^native-windows-git: .*git\.exe -C [A-Za-z]:' "$evidence"; then
+      goal_fail "goal_git did not select native Windows git.exe for WSL Windows-drive root"
+    fi
+    case "$git_dir" in
+      */[A-Za-z]:*|*\\[A-Za-z]:*)
+        goal_fail "goal_git returned nested Windows gitdir path: $git_dir"
+        ;;
+    esac
+    case "$git_root" in
+      */[A-Za-z]:*|*\\[A-Za-z]:*)
+        goal_fail "goal_git returned nested Windows root path: $git_root"
+        ;;
+    esac
+  fi
+
+  note "PASS GOAL-GATE git-path $evidence"
 }
 
 check_powershell_parser() {
@@ -277,9 +413,19 @@ if [[ "$mode" == "spec" ]]; then
   exit 0
 fi
 
+if [[ "$mode" == "path-checks" ]]; then
+  check_goal_git_contract
+  check_to_windows_path_contract
+  check_powershell_parser
+  note "PASS GOAL-GATE"
+  exit 0
+fi
+
 check_executable_modes
+check_goal_git_contract
 run_gate_cmd "diff-check" "$EVIDENCE_DIR/goal-gate-diff-check.txt" check_diff_whitespace
 run_gate_cmd "bash-syntax" "$EVIDENCE_DIR/goal-gate-bash-syntax.txt" check_bash_syntax
+check_to_windows_path_contract
 check_powershell_parser
 run_gate_cmd "beginner-state-contract-bash" "$EVIDENCE_DIR/goal-gate-beginner-state-contract-bash.txt" bash "$QA_DIR/beginner-approval-gate-bash.sh" --state-contract
 run_gate_cmd "beginner-standard-bash" "$EVIDENCE_DIR/goal-gate-beginner-standard-bash.txt" bash "$QA_DIR/beginner-approval-gate-bash.sh" --standard
