@@ -199,6 +199,9 @@ Start-Wizard -Platform 'Windows' -Root (Join-Path $Root 'windows')
       Add-Content -Path $OutPath -Value "STALE_STATE_AFTER=$staleAfter"
       $preserved = if ($staleBefore -eq $staleAfter) { 'yes' } else { 'no' }
       Add-Content -Path $OutPath -Value "STALE_STATE_PRESERVED=$preserved"
+      if ($exitCode -eq 0) {
+        Add-Content -Path $OutPath -Value 'Scenario exit code: 0'
+      }
     }
     Remove-Item -LiteralPath $helperHome -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $scenarioDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -348,8 +351,8 @@ switch ($Mode) {
     Assert-NotContains -Path "$AdversarialTranscriptPath.misleading" -Pattern 'QA_EXECUTE_MARKER'
     Add-Content -Path $AdversarialTranscriptPath -Value 'PASS success-like text is not treated as execution'
 
-    Remove-Item -LiteralPath "$AdversarialTranscriptPath.malformed", "$AdversarialTranscriptPath.stale", "$AdversarialTranscriptPath.dirty", "$AdversarialTranscriptPath.misleading" -Force -ErrorAction SilentlyContinue
-    Add-Content -Path $AdversarialTranscriptPath -Value 'Cleanup receipt: removed adversarial scratch transcripts'
+    Remove-Item -LiteralPath "$AdversarialTranscriptPath.malformed", "$AdversarialTranscriptPath.dirty", "$AdversarialTranscriptPath.misleading" -Force -ErrorAction SilentlyContinue
+    Add-Content -Path $AdversarialTranscriptPath -Value 'Cleanup receipt: removed adversarial non-stale scratch transcripts'
     Write-Output "PASS adversarial-probes $AdversarialTranscriptPath"
   }
   'MalformedStandard' {
