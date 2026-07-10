@@ -59,6 +59,12 @@ Linux:
 - 팀원마다 같은 위치를 쓰면 상태 설명과 재시작이 쉽습니다.
 - `AI_BOILER_PLATE_DIR`를 같은 값으로 맞추면 bootstrap path(설치 시작 경로)도 통일됩니다.
 
+초보자에게 OS(운영체제)를 설명할 때는 아래처럼 짧게 말합니다.
+
+- Windows는 대부분의 개인용 PC에서 쓰는 운영체제입니다. PowerShell을 열고 `.\windows\install.ps1 -Standard` 흐름을 사용합니다.
+- Linux는 서버나 개발용 컴퓨터에서 자주 쓰는 운영체제입니다. terminal(터미널)을 열고 `./linux/install.sh --standard` 흐름을 사용합니다.
+- 처음 설치하는 초보자가 이미 Windows 컴퓨터에서 Codex를 쓰고 있다면 Windows를 권장합니다. Linux를 이미 쓰고 있거나 팀에서 Linux를 지정한 경우에만 Linux를 고릅니다.
+
 ## 3. Plan Mode Questions(계획 모드 질문)
 
 에이전트는 아래 순서로 질문합니다. 질문은 초보자가 기능을 보고 고를 수 있게 제품명만 묻지 않습니다.

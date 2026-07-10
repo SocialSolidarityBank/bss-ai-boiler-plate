@@ -122,6 +122,7 @@ if ((-not $self) -or ($self -ne $target)) {
 # ---------------------------------------------------------------------------
 # Load shared helpers + set flags
 # ---------------------------------------------------------------------------
+$Skip = @($Skip)
 . (Join-Path $Root 'scripts\lib.ps1')
 $script:DryRun    = [bool]$DryRun
 $script:AssumeYes = [bool]$Yes
@@ -133,17 +134,6 @@ $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
-$Skip = @($Skip)
-if ($Standard) {
-  $Yes = $true
-  $Classic = $true
-  $Skip += 'docker'
-  $env:BSS_AI_INSTALL_CODEX = '1'
-  $env:BSS_AI_INSTALL_CLAUDE = '1'
-  $env:BSS_AI_INSTALL_EXTRAS = '0'
-  $env:HERMES = '0'
-}
-
 $StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume')
 $StepFile = @{
   prereqs  = '01-prereqs.ps1'
@@ -182,13 +172,115 @@ if ($ResetState) {
   }
   if ($script:RunFromFile) { exit 0 } else { return }
 }
+
+function Add-SkippedStep {
+  param([Parameter(Mandatory)][string]$Id)
+  if (@($script:Skip) -notcontains $Id) { $script:Skip = @($script:Skip) + $Id }
+}
+
+function Stop-StandardPlan {
+  param([Parameter(Mandatory)][string]$Message)
+  Write-Info '-Standard is the Standard Execution Preset for an approved Final Installation Plan.'
+  Write-Info $Message
+  Write-Info 'Create the plan with -Wizard first, then approve it by entering "승인" or "진행".'
+  if ($script:RunFromFile) { exit 2 } else { throw $Message }
+}
+
+function Use-ApprovedStandardPlan {
+  $status = Get-InstallationPlanStatus
+  if ($status -ne 'approved') {
+    Stop-StandardPlan 'No approved installationPlan exists, so no install steps were started.'
+  }
+
+  $schemaError = Get-InstallationPlanSchemaError
+  if ($schemaError) {
+    Stop-StandardPlan "Invalid approved installationPlan schema: $schemaError; no install steps were started."
+  }
+
+  $planOs = Get-InstallationPlanField -Field 'selectedOS'
+  if ($planOs -ne 'Windows') {
+    Stop-StandardPlan "The approved installationPlan is for '$planOs', not Windows."
+  }
+
+  $script:Yes = $true
+  $script:AssumeYes = $true
+  $script:Classic = $true
+  Add-SkippedStep -Id 'docker'
+
+  $baseEnvironment = Get-InstallationPlanField -Field 'baseEnvironment'
+  if ($baseEnvironment -ne 'install') {
+    foreach ($id in @('prereqs', 'packages', 'runtimes', 'shell', 'git', 'resume')) {
+      Add-SkippedStep -Id $id
+    }
+  }
+
+  $env:BSS_AI_INSTALL_CODEX = '0'
+  $env:BSS_AI_INSTALL_CLAUDE = '0'
+  $env:BSS_AI_INSTALL_MATT = '0'
+  $env:BSS_AI_INSTALL_EXTRAS = '0'
+  $env:HERMES = '0'
+  if (Test-InstallationPlanHasAi -Tool 'Codex CLI') { $env:BSS_AI_INSTALL_CODEX = '1' }
+  if (Test-InstallationPlanHasAi -Tool 'Claude Code CLI') { $env:BSS_AI_INSTALL_CLAUDE = '1' }
+  if (-not (Get-InstallationPlanField -Field 'aiCliTools')) { Add-SkippedStep -Id 'agents' }
+
+  Write-Info "Using approved Final Installation Plan: $(Get-InstallationPlanField -Field 'executionCommand')"
+}
+
+function Invoke-StandardPlanAddons {
+  if (-not $Standard) { return }
+  . (Join-Path $Root 'scripts\recommendations.ps1')
+
+  $selectedAddons = @(Get-InstallationPlanSelectedAddons)
+  if ($selectedAddons.Count -eq 0) {
+    Set-StepStatus -Step 'addons' -Status 'skipped' -Note 'no add-ons selected in approved plan'
+    return
+  }
+
+  foreach ($id in $selectedAddons) {
+    $title = Get-RecommendationTitle -Id $id
+    $commands = @(Get-RecommendationInstallCommand -Id $id)
+    if ($commands.Count -eq 0 -or ($commands.Count -eq 1 -and $commands[0] -eq 'status-only')) {
+      Write-Info "$title is a status-only item; no install command was run."
+      Set-AddonStatus -Id $id -Title $title -Status 'skipped' -Note 'status-only'
+      continue
+    }
+    if ($script:DryRun) {
+      foreach ($cmd in $commands) { Write-Info "[dry-run] would run: $cmd" }
+      Set-AddonStatus -Id $id -Title $title -Status 'complete' -Note 'dry-run install approved'
+      Set-StepStatus -Step 'addons' -Status 'complete' -Note "$title dry-run"
+      continue
+    }
+
+    $ok = $true
+    foreach ($cmd in $commands) {
+      & cmd.exe /c $cmd
+      if ($LASTEXITCODE -ne 0) {
+        $ok = $false
+        break
+      }
+    }
+    if ($ok) {
+      Set-AddonStatus -Id $id -Title $title -Status 'complete' -Note 'installed'
+      Set-StepStatus -Step 'addons' -Status 'complete' -Note "$title installed"
+    } else {
+      Set-AddonStatus -Id $id -Title $title -Status 'failed' -Note 'install failed'
+      Stop-Kit "$title add-on install failed."
+    }
+  }
+}
+
+if ($Standard) { Use-ApprovedStandardPlan }
+
 $directMode = [bool]($Classic -or $Yes -or $Only.Count -gt 0 -or $Skip.Count -gt 0 -or $NoAgents)
 if (($Wizard -or ((-not $directMode) -and (-not [Console]::IsInputRedirected))) -and -not $Classic)  {
   if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
   . (Join-Path $Root 'scripts\recommendations.ps1')
   . (Join-Path $Root 'scripts\wizard.ps1')
+  $script:WizardClassicRequested = $false
   Start-Wizard -Platform 'Windows' -Root $Root
-  if ($script:RunFromFile) { exit 0 } else { return }
+  if (-not $script:WizardClassicRequested) {
+    if ($script:RunFromFile) { exit 0 } else { return }
+  }
 }
 
 if ($NoAgents) { $Skip = @($Skip) + 'agents' }
@@ -221,9 +313,63 @@ function Write-CompletionReport {
   try {
     . $reportScript
     New-HelperReport | ForEach-Object { Write-Info $_ }
+    Add-StepSummaryToLatestReport
   } catch {
     Write-Warn "설치는 끝났지만 결과 리포트/HTML 매뉴얼 생성은 실패했습니다. state 파일과 PowerShell 권한을 확인해 주세요."
     Write-Warn $_.Exception.Message
+  }
+}
+
+function Add-StepSummaryToLatestReport {
+  $report = Get-ReportPath
+  if (-not (Test-Path $report)) { return }
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('steps')) { return }
+  $labels = @{
+    'base-tools' = 'Basic Environment(base-tools)'
+    shell = 'Shell(shell)'
+    github = 'GitHub(github)'
+    'ai-tools' = 'AI CLI Tools(ai-tools)'
+    addons = 'Add-ons(addons)'
+    report = 'Report(report)'
+  }
+  $statusLabels = @{
+    complete = 'complete'
+    skipped = 'skipped'
+    partial = 'partial'
+    failed = 'failed'
+    pending = 'pending'
+    in_progress = 'in_progress'
+  }
+  $lines = @('', '## Install Result')
+  foreach ($key in @('base-tools','shell','github','ai-tools','addons','report')) {
+    if (-not $state['steps'].ContainsKey($key)) { continue }
+    $row = $state['steps'][$key]
+    $status = [string]$row['status']
+    $label = if ($labels.ContainsKey($key)) { $labels[$key] } else { $key }
+    $statusText = if ($statusLabels.ContainsKey($status)) { $statusLabels[$status] } else { $status }
+    $note = if ($row.ContainsKey('note')) { [string]$row['note'] } else { '' }
+    $suffix = if ($note) { " - $note" } else { '' }
+    $lines += "- $($label): $statusText$suffix"
+  }
+  Add-Content -Path $report -Encoding UTF8 -Value $lines
+}
+
+function Set-AggregateStepStatus {
+  param(
+    [Parameter(Mandatory)]$SelectedSet,
+    [Parameter(Mandatory)][string]$Step,
+    [Parameter(Mandatory)][string[]]$RequiredSteps,
+    [Parameter(Mandatory)][string]$CompleteNote,
+    [Parameter(Mandatory)][string]$SkippedNote
+  )
+  $selectedRequired = @($RequiredSteps | Where-Object { $SelectedSet.ContainsKey($_) })
+  if ($selectedRequired.Count -eq $RequiredSteps.Count) {
+    Set-StepStatus -Step $Step -Status 'complete' -Note $CompleteNote
+  } elseif ($selectedRequired.Count -gt 0) {
+    Set-StepStatus -Step $Step -Status 'partial' -Note ("partial: " + ($selectedRequired -join ' '))
+  } else {
+    Set-StepStatus -Step $Step -Status 'skipped' -Note $SkippedNote
   }
 }
 
@@ -232,10 +378,12 @@ function Record-CompletionState {
   $selectedSet = @{}
   foreach ($item in @($selected)) { $selectedSet[$item] = $true }
 
-  if ($selectedSet.ContainsKey('prereqs') -or $selectedSet.ContainsKey('packages') -or $selectedSet.ContainsKey('runtimes')) {
+  Set-AggregateStepStatus -SelectedSet $selectedSet -Step 'base-tools' -RequiredSteps @('prereqs','packages','runtimes') -CompleteNote 'Windows base environment complete' -SkippedNote 'Windows base environment not selected'
+  Set-AggregateStepStatus -SelectedSet $selectedSet -Step 'shell' -RequiredSteps @('shell','resume') -CompleteNote 'PowerShell profile/restart setup complete' -SkippedNote 'shell setup not selected'
+  if ($selectedSet.ContainsKey('prereqs') -and $selectedSet.ContainsKey('packages') -and $selectedSet.ContainsKey('runtimes')) {
     Set-StepStatus -Step 'base-tools' -Status 'complete' -Note 'Windows 기본 환경 설치 완료'
   }
-  if ($selectedSet.ContainsKey('shell') -or $selectedSet.ContainsKey('resume')) {
+  if ($selectedSet.ContainsKey('shell') -and $selectedSet.ContainsKey('resume')) {
     Set-StepStatus -Step 'shell' -Status 'complete' -Note 'PowerShell profile/restart 설정 완료'
   }
   if ($selectedSet.ContainsKey('git')) {
@@ -281,6 +429,8 @@ foreach ($id in $selected) {
     & $StepFunc[$id]
   }
 }
+
+Invoke-StandardPlanAddons
 
 if (-not $script:DryRun) {
   Write-Step "Install result manual"

@@ -10,9 +10,9 @@ secret_regex='(ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]
 
 case "$mode" in
   target)
-    before="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
+    before="$(qa_git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
     run_and_capture "$evidence" "$ROOT/scripts/11-publish-readiness.sh" --check || fail "publish readiness check failed; see $evidence"
-    after="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
+    after="$(qa_git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
     [[ "$before" == "$after" ]] || fail "publish readiness mutated origin"
     assert_contains "$evidence" 'github.com/socialsolidaritybank/ai-boiler-plate'
     assert_contains "$evidence" 'commit/push/create'
@@ -29,7 +29,7 @@ case "$mode" in
     note "PASS G013-NO-SECRETS $evidence"
     ;;
   remote)
-    current="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
+    current="$(qa_git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
     {
       printf 'current origin: %s\n' "$current"
       "$ROOT/scripts/11-publish-readiness.sh" --check

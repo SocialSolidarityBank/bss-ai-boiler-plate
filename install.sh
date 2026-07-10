@@ -11,7 +11,7 @@
 # Options:
 #   --dry-run        Show what would happen, change nothing.
 #   --yes, -y        Non-interactive: accept defaults, never prompt.
-#   --standard       Beginner/team preset: --yes --skip docker.
+#   --standard       Run an approved Final Installation Plan.
 #   --only  a,b,c    Run only these steps.
 #   --skip  a,b,c    Run all steps except these.
 #   --no-agents      Shortcut for --skip agents.
@@ -110,20 +110,80 @@ step_file() {
 # non-comment line) so --help never leaks code that follows the header.
 usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$KIT_ROOT/install.sh"; }
 
+_append_skip() {
+  local id="$1"
+  [[ ",$SKIP," == *",$id,"* ]] && return 0
+  SKIP="${SKIP:+$SKIP,}$id"
+}
+
+configure_standard_plan() {
+  local expected_os="$1" package_step="$2" status plan_os base ai_tools
+  state_init || die "state.json을 읽을 수 없어 --standard를 실행하지 않았습니다."
+  status="$(state_installation_plan_status)"
+  if [[ "$status" != "approved" ]]; then
+    info "--standard is the Standard Execution Preset for an approved Final Installation Plan."
+    info "승인된 Final Installation Plan(최종 설치 계획)이 없어 설치를 시작하지 않았습니다."
+    info "먼저 --wizard로 계획을 만들고 마지막에 '승인' 또는 '진행'을 입력하세요."
+    exit 2
+  fi
+
+  plan_os="$(state_installation_plan_field selectedOS)"
+  if [[ "$plan_os" != "$expected_os" ]]; then
+    info "승인된 plan은 $plan_os 용입니다. 이 installer는 $expected_os 용이라 실행하지 않습니다."
+    info "Plan의 실행 command: $(state_installation_plan_field executionCommand)"
+    exit 2
+  fi
+
+  CLASSIC=1
+  DIRECT_MODE=1
+  export ASSUME_YES=1
+  _append_skip docker
+
+  base="$(state_installation_plan_field baseEnvironment)"
+  if [[ "$base" != "install" ]]; then
+    _append_skip prereqs
+    _append_skip "$package_step"
+    _append_skip runtimes
+    _append_skip shell
+    _append_skip git
+    _append_skip resume
+  fi
+
+  export BSS_AI_INSTALL_CODEX=0 BSS_AI_INSTALL_CLAUDE=0 BSS_AI_INSTALL_MATT=0 BSS_AI_INSTALL_EXTRAS=0 HERMES=0
+  if state_installation_plan_has_ai "Codex CLI"; then
+    export BSS_AI_INSTALL_CODEX=1
+  fi
+  if state_installation_plan_has_ai "Claude Code CLI"; then
+    export BSS_AI_INSTALL_CLAUDE=1
+  fi
+  ai_tools="$(state_installation_plan_field aiCliTools)"
+  if [[ -z "$ai_tools" ]]; then
+    _append_skip agents
+  fi
+  info "Using approved Final Installation Plan: $(state_installation_plan_field executionCommand)"
+}
+
+run_standard_plan_addons() {
+  local id found=0
+  [[ "$STANDARD" == "1" ]] || return 0
+  while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    found=1
+    _install_addon "$id"
+  done < <(state_installation_plan_selected_addons)
+  [[ "$found" == "1" ]] || state_set_step_status addons skipped "추가 기능 설치하지 않음" || true
+}
+
 # ---------------------------------------------------------------------------
 # Arg parsing
 # ---------------------------------------------------------------------------
-ONLY=""; SKIP=""; STATUS=0; RESET_STATE=0; WIZARD=0; CLASSIC=0; DIRECT_MODE=0
+ONLY=""; SKIP=""; STATUS=0; RESET_STATE=0; WIZARD=0; CLASSIC=0; DIRECT_MODE=0; STANDARD=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)   export DRY_RUN=1 ;;
     -y|--yes)    export ASSUME_YES=1; DIRECT_MODE=1 ;;
     --standard)
-      CLASSIC=1
-      DIRECT_MODE=1
-      export ASSUME_YES=1
-      SKIP="${SKIP:+$SKIP,}docker"
-      export BSS_AI_INSTALL_CODEX=1 BSS_AI_INSTALL_CLAUDE=1 BSS_AI_INSTALL_EXTRAS=0 HERMES=0
+      STANDARD=1
       ;;
     --status)    STATUS=1 ;;
     --reset-state) RESET_STATE=1 ;;
@@ -156,9 +216,6 @@ _validate_ids() {
     [[ "$found" == 1 ]] || die "unknown step id: '$tok' (valid: $valid)"
   done
 }
-[[ -n "$ONLY" ]] && _validate_ids "$ONLY"
-[[ -n "$SKIP" ]] && _validate_ids "$SKIP"
-
 if [[ "$STATUS" == "1" ]]; then
   bss_show_status
   exit 0
@@ -167,6 +224,11 @@ if [[ "$RESET_STATE" == "1" ]]; then
   bss_reset_state
   exit 0
 fi
+if [[ "$STANDARD" == "1" ]]; then
+  configure_standard_plan "macOS" "brew"
+fi
+[[ -n "$ONLY" ]] && _validate_ids "$ONLY"
+[[ -n "$SKIP" ]] && _validate_ids "$SKIP"
 if [[ "$WIZARD" == "1" || ( "$CLASSIC" != "1" && "$DIRECT_MODE" != "1" && -t 0 ) ]]; then
   if run_wizard macos; then
     exit 0
@@ -206,15 +268,38 @@ generate_completion_report() {
   fi
 }
 
+set_aggregate_step_status() {
+  local selected_steps="$1" step_id="$2" complete_note="$3" skipped_note="$4"
+  shift 4
+  local required_count=0 selected_count=0 id selected_names=()
+  for id in "$@"; do
+    required_count=$((required_count + 1))
+    if [[ "$selected_steps" == *" $id "* ]]; then
+      selected_count=$((selected_count + 1))
+      selected_names+=("$id")
+    fi
+  done
+
+  if [[ "$selected_count" -eq "$required_count" ]]; then
+    state_set_step_status "$step_id" complete "$complete_note" || true
+  elif [[ "$selected_count" -gt 0 ]]; then
+    state_set_step_status "$step_id" partial "partial: ${selected_names[*]}" || true
+  else
+    state_set_step_status "$step_id" skipped "$skipped_note" || true
+  fi
+}
+
 record_completion_state() {
   local selected_steps service_list
   selected_steps=" $(selected | tr '\n' ' ') "
   state_init || true
 
-  if [[ "$selected_steps" == *" prereqs "* || "$selected_steps" == *" brew "* || "$selected_steps" == *" runtimes "* ]]; then
+  set_aggregate_step_status "$selected_steps" base-tools "macOS base environment complete" "macOS base environment not selected" prereqs brew runtimes
+  set_aggregate_step_status "$selected_steps" shell "zsh/profile/restart setup complete" "shell setup not selected" shell resume
+  if [[ "$selected_steps" == *" prereqs "* && "$selected_steps" == *" brew "* && "$selected_steps" == *" runtimes "* ]]; then
     state_set_step_status base-tools complete "macOS 기본 환경 설치 완료" || true
   fi
-  if [[ "$selected_steps" == *" shell "* || "$selected_steps" == *" resume "* ]]; then
+  if [[ "$selected_steps" == *" shell "* && "$selected_steps" == *" resume "* ]]; then
     state_set_step_status shell complete "zsh/profile/restart 설정 완료" || true
   fi
   if [[ "$selected_steps" == *" git "* ]]; then
@@ -257,6 +342,8 @@ for id in $(selected); do
   source "$file"
   "$fn"
 done
+
+run_standard_plan_addons
 
 if [[ "${DRY_RUN:-0}" != "1" ]]; then
   step "Install result manual"

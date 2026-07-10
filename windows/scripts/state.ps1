@@ -13,7 +13,7 @@ function Get-ReportPath { Join-Path (Get-HelperHome) 'latest-report.md' }
 function Get-ManualPath { Join-Path (Join-Path (Get-HelperHome) 'manual') 'index.html' }
 
 function New-HelperState {
-  return @{ version = 1; steps = @{}; ai_services = @(); aiServices = @(); addons = @{}; tools = @() }
+  return @{ version = 1; steps = @{}; ai_services = @(); aiServices = @(); addons = @{}; tools = @(); installationPlan = @{} }
 }
 
 function ConvertTo-PlainObject {
@@ -71,6 +71,7 @@ function Read-HelperState {
     if (-not $state.ContainsKey('aiServices')) { $state['aiServices'] = @($state['ai_services']) }
     if (-not $state.ContainsKey('addons')) { $state['addons'] = @{} }
     if (-not $state.ContainsKey('tools')) { $state['tools'] = @() }
+    if (-not $state.ContainsKey('installationPlan')) { $state['installationPlan'] = @{} }
     Normalize-HelperStateArrays -State $state
     return $state
   } catch {
@@ -166,7 +167,149 @@ function Set-AddonStatus {
   $state = Read-HelperState
   if (-not $state.ContainsKey('addons')) { $state['addons'] = @{} }
   $state['addons'][$Id] = @{ title = $Title; status = $Status; seen = $true; note = $Note }
+  Set-ToolInState -State $state -Name $Title -Status $Status -Kind 'addon' -Reason $Note
   Write-HelperState -State $state
+}
+
+function Get-InstallationPlanAddonTitle {
+  param([Parameter(Mandatory)][string]$Id)
+  switch ($Id) {
+    'matt-pocock-skills' { return 'Matt Pocock Skills' }
+    'superpowers' { return 'Superpowers Planning Pack' }
+    'lazy-codex' { return 'Lazy-Codex' }
+    'oh-my-claudecode' { return 'oh-my-claudecode' }
+    default { return $Id }
+  }
+}
+
+function Set-InstallationPlan {
+  param(
+    [Parameter(Mandatory)][string]$SelectedOS,
+    [Parameter(Mandatory)][string]$WorkspaceFolder,
+    [Parameter(Mandatory)][string]$BaseEnvironment,
+    [string[]]$AiCliTools = @(),
+    [string[]]$SelectedAddons = @(),
+    [Parameter(Mandatory)][string]$ExecutionCommand
+  )
+  $state = Read-HelperState
+  $selected = @{}
+  foreach ($id in @($SelectedAddons | Where-Object { $_ })) { $selected[$id] = $true }
+  $addons = @{}
+  foreach ($id in @('matt-pocock-skills', 'superpowers', 'lazy-codex', 'oh-my-claudecode')) {
+    $isSelected = $selected.ContainsKey($id)
+    $addons[$id] = @{
+      title = Get-InstallationPlanAddonTitle -Id $id
+      selected = $isSelected
+      decision = if ($isSelected) { 'install' } else { 'skip' }
+    }
+  }
+  $state['installationPlan'] = @{
+    schemaVersion = 1
+    selectedOS = $SelectedOS
+    workspaceFolder = $WorkspaceFolder
+    baseEnvironment = $BaseEnvironment
+    aiCliTools = [object[]]@($AiCliTools | Where-Object { $_ })
+    addons = $addons
+    executionCommand = $ExecutionCommand
+    approvalStatus = 'pending'
+    approvedAt = ''
+    secretPolicy = 'No tokens, OAuth codes, passwords, private keys, or device codes are stored.'
+  }
+  Write-HelperState -State $state
+}
+
+function Approve-InstallationPlan {
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan') -or $state['installationPlan'].Count -eq 0) {
+    throw 'installation plan is missing'
+  }
+  $state['installationPlan']['approvalStatus'] = 'approved'
+  $state['installationPlan']['approvedAt'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  Write-HelperState -State $state
+}
+
+function Get-InstallationPlanStatus {
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan')) { return 'missing' }
+  $plan = $state['installationPlan']
+  if ($null -eq $plan -or $plan.Count -eq 0) { return 'missing' }
+  if ($plan.ContainsKey('approvalStatus') -and $plan['approvalStatus']) { return [string]$plan['approvalStatus'] }
+  return 'missing'
+}
+
+function Get-InstallationPlanSchemaError {
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan')) { return 'installationPlan must be an object/map' }
+  $plan = $state['installationPlan']
+  if ($null -eq $plan -or -not ($plan -is [System.Collections.IDictionary])) { return 'installationPlan must be an object/map' }
+
+  foreach ($field in @('selectedOS', 'workspaceFolder', 'baseEnvironment', 'executionCommand', 'approvalStatus', 'approvedAt', 'secretPolicy')) {
+    if (-not $plan.ContainsKey($field) -or -not ($plan[$field] -is [string])) {
+      return "installationPlan.$field must be a string"
+    }
+  }
+
+  if (-not $plan.ContainsKey('schemaVersion') -or -not ($plan['schemaVersion'] -is [int] -or $plan['schemaVersion'] -is [long])) {
+    return 'installationPlan.schemaVersion must be a number'
+  }
+  if (-not $plan.ContainsKey('aiCliTools') -or -not ($plan['aiCliTools'] -is [System.Array])) {
+    return 'installationPlan.aiCliTools must be an array'
+  }
+  if (-not $plan.ContainsKey('addons') -or -not ($plan['addons'] -is [System.Collections.IDictionary])) {
+    return 'installationPlan.addons must be an object/map'
+  }
+
+  foreach ($key in @($plan['addons'].Keys)) {
+    $addon = $plan['addons'][$key]
+    if ($null -eq $addon -or -not ($addon -is [System.Collections.IDictionary])) {
+      return "installationPlan.addons.$key must be an object/map"
+    }
+    if (-not $addon.ContainsKey('title') -or -not ($addon['title'] -is [string])) {
+      return "installationPlan.addons.$key.title must be a string"
+    }
+    if (-not $addon.ContainsKey('selected') -or -not ($addon['selected'] -is [bool])) {
+      return "installationPlan.addons.$key.selected must be a boolean"
+    }
+    if (-not $addon.ContainsKey('decision') -or -not ($addon['decision'] -is [string])) {
+      return "installationPlan.addons.$key.decision must be a string"
+    }
+  }
+
+  return ''
+}
+
+function Get-InstallationPlanField {
+  param([Parameter(Mandatory)][string]$Field)
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan')) { return '' }
+  $plan = $state['installationPlan']
+  if ($null -eq $plan -or -not $plan.ContainsKey($Field)) { return '' }
+  $value = $plan[$Field]
+  if ($value -is [System.Array]) { return (($value | ForEach-Object { [string]$_ }) -join ',') }
+  if ($value -is [System.Collections.IDictionary]) { return ($value | ConvertTo-Json -Depth 8 -Compress) }
+  return [string]$value
+}
+
+function Test-InstallationPlanHasAi {
+  param([Parameter(Mandatory)][string]$Tool)
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan')) { return $false }
+  $plan = $state['installationPlan']
+  if ($null -eq $plan -or -not $plan.ContainsKey('aiCliTools')) { return $false }
+  return (@($plan['aiCliTools']) -contains $Tool)
+}
+
+function Get-InstallationPlanSelectedAddons {
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('installationPlan')) { return @() }
+  $plan = $state['installationPlan']
+  if ($null -eq $plan -or -not $plan.ContainsKey('addons')) { return @() }
+  $selected = @()
+  foreach ($key in @($plan['addons'].Keys)) {
+    $row = $plan['addons'][$key]
+    if ($row -and $row.ContainsKey('selected') -and $row['selected']) { $selected += $key }
+  }
+  return $selected
 }
 
 function Append-History {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 bss_show_status() {
-  local state
+  local state py
   state="$(bss_state_path)"
 
   if [[ ! -f "$state" ]]; then
@@ -11,13 +11,13 @@ bss_show_status() {
     return 0
   fi
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    warn "python3가 없어 상태 파일을 자세히 읽지 못했습니다: ${state/#$HOME/~}"
+  if ! py="$(_state_python)"; then
+    warn "python3 or python is required to read the status file: ${state/#$HOME/~}"
     printf '상태 파일: %s\n' "$state"
-    return 0
+    return 1
   fi
 
-  PYTHONIOENCODING=UTF-8 python3 - "$state" <<'PY'
+  PYTHONIOENCODING=UTF-8 "$py" - "$state" <<'PY'
 import json
 import sys
 from pathlib import Path
