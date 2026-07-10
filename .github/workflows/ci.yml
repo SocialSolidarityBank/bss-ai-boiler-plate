@@ -50,11 +50,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
       - name: run lane 3 scripted QA
         env:
           AI_BOILER_PLATE_HOME: ${{ runner.temp }}/ai-boiler-plate-home
+          GOAL_GATE_DIFF_CONTEXT: ci
+          GOAL_GATE_CI_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          GOAL_GATE_CI_HEAD: ${{ github.sha }}
         run: |
-          chmod +x scripts/qa/*.sh scripts/*.sh .githooks/pre-commit .githooks/pre-push
           scripts/qa/goal-mode-gate.sh --quick
           scripts/qa/lane3-all.sh
 
@@ -280,7 +284,7 @@ jobs:
           exit $fail
 
   windows-e2e:
-    name: windows install -> uninstall
+    name: windows install -> agents/shell uninstall
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -319,7 +323,8 @@ jobs:
             if ($candidates | Where-Object { Test-Path $_ }) {
               Write-Host "ok   mise shim:$t"
             } else {
-              Write-Host "warn mise shim:$t not found"
+              Write-Host "MISS mise shim:$t"
+              $fail = 1
             }
           }
           $env:Path += ";$env:LOCALAPPDATA\mise\shims;$env:USERPROFILE\.bun\bin;$env:USERPROFILE\.local\bin"
@@ -342,12 +347,12 @@ jobs:
           }
           [Environment]::Exit($fail)
 
-      - name: uninstall (teardown)
+      - name: uninstall (agents/shell teardown)
         shell: pwsh
         timeout-minutes: 5
         run: .\windows\uninstall.ps1 -Yes -Only agents,shell
 
-      - name: verify removed
+      - name: verify agents/shell removed
         shell: pwsh
         run: |
           $prof = $PROFILE.CurrentUserAllHosts

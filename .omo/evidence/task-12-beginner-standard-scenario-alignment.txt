@@ -1,0 +1,52 @@
+TASK 12 Windows E2E shim and uninstall-scope audit
+SCENARIO workflow_static_audit
+COMMAND: grep/static assertions over .github/workflows/ci.yml
+58:          GOAL_GATE_DIFF_CONTEXT: ci
+59:          GOAL_GATE_CI_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+60:          GOAL_GATE_CI_HEAD: ${{ github.sha }}
+287:    name: windows install -> agents/shell uninstall
+350:      - name: uninstall (agents/shell teardown)
+355:      - name: verify agents/shell removed
+326:              Write-Host "MISS mise shim:$t"
+PASS no warn mise shim remains
+PASS misleading windows uninstall job name absent
+SCENARIO missing_runtime_shim_assertion
+TEMP_SHIM_DIR=/tmp/tmp.kWFoesAmLq/shims
+COMMAND: powershell.exe missing node/go/python shim smoke
+EXIT_CODE=1
+MISS mise shim:node
+MISS mise shim:go
+MISS mise shim:python
+PASS task 12 workflow/shim QA
+CLEANUP temp files removed: /tmp/tmp.kWFoesAmLq
+CLEANUP_STATUS=PASS
+EXIT_CODE=0
+
+FINAL_VERIFICATION
+COMMAND: bash -n scripts/install-goal-hooks.sh scripts/qa/goal-mode-gate.sh .githooks/pre-commit .githooks/pre-push
+RESULT: exit 0
+COMMAND: git diff --check && git diff --cached --check
+RESULT: exit 0
+COMMAND: git ls-files -s direct-run files
+100755 f7ee0fa6fea2e514c8b0db872030c2178518effa 0	.githooks/pre-commit
+100755 b633dda689bbc8b0f511d5d323cc3383296da338 0	.githooks/pre-push
+100755 5db1b6859e743299691ca9057b0ca80a902c2ef9 0	scripts/install-goal-hooks.sh
+100755 7f8d4adafc1efc116afc6fa1e8e885c60fbd9eb8 0	scripts/qa/goal-mode-gate.sh
+COMMAND: git status --short
+M  .githooks/pre-commit
+M  .githooks/pre-push
+M  .github/workflows/ci.yml
+A  .omo/evidence/task-10-beginner-standard-scenario-alignment.txt
+A  .omo/evidence/task-11-beginner-standard-scenario-alignment.txt
+AM .omo/evidence/task-12-beginner-standard-scenario-alignment.txt
+ M AGENTS.md
+ M docs/beginner-codex-user-scenario.md
+ M docs/team-beginner-standard-install.md
+ M install.sh
+ M linux/install.sh
+M  scripts/install-goal-hooks.sh
+M  scripts/qa/goal-mode-gate.sh
+ M windows/install.ps1
+?? scripts/qa/aggregate-completion-state.sh
+?? scripts/qa/beginner-approval-gate-bash.sh
+?? scripts/qa/beginner-approval-gate-windows.ps1

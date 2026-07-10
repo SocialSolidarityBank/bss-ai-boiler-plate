@@ -166,6 +166,7 @@ function Set-AddonStatus {
   $state = Read-HelperState
   if (-not $state.ContainsKey('addons')) { $state['addons'] = @{} }
   $state['addons'][$Id] = @{ title = $Title; status = $Status; seen = $true; note = $Note }
+  Set-ToolInState -State $state -Name $Title -Status $Status -Kind 'addon' -Reason $Note
   Write-HelperState -State $state
 }
 

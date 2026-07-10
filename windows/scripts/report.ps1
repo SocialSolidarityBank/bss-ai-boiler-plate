@@ -126,6 +126,19 @@ function New-HelperReport {
   $phrases = @('보일러 플레이트 시작해줘', 'AI 세팅 이어서 해줘', '개발환경 설치 도와줘')
   if ($data.ContainsKey('restartPhrases') -and $data['restartPhrases']) { $phrases = @($data['restartPhrases']) }
   $tools = @($data['tools'])
+  if ($data.ContainsKey('addons') -and $data['addons']) {
+    foreach ($addon in $data['addons'].GetEnumerator()) {
+      $row = $addon.Value
+      $title = if ($row.ContainsKey('title') -and $row['title']) { [string]$row['title'] } else { [string]$addon.Key }
+      $alreadyListed = @($tools | Where-Object { (Get-ToolValue -Tool $_ -Key 'name') -eq $title }).Count -gt 0
+      if (-not $alreadyListed) {
+        $status = if ($row.ContainsKey('status') -and $row['status']) { [string]$row['status'] } else { 'pending' }
+        $tool = @{ name = $title; status = $status; kind = 'addon' }
+        if ($row.ContainsKey('note') -and $row['note']) { $tool['reason'] = [string]$row['note'] }
+        $tools += $tool
+      }
+    }
+  }
   $installed = @($tools | Where-Object { (Get-ToolValue -Tool $_ -Key 'status') -in @('installed','complete','completed') })
   $notInstalled = @($tools | Where-Object { (Get-ToolValue -Tool $_ -Key 'status') -notin @('installed','complete','completed') })
   if ($installed.Count -eq 0) { $installed = @(@{ name='아직 설치 완료로 기록된 도구가 없습니다.'; status='pending' }) }

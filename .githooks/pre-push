@@ -2,4 +2,4 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec "$ROOT/scripts/qa/goal-mode-gate.sh" --full
+GOAL_GATE_DIFF_CONTEXT=local exec "$ROOT/scripts/qa/goal-mode-gate.sh" --full

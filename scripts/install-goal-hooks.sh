@@ -8,7 +8,7 @@ if ! git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   exit 1
 fi
 
-chmod +x "$ROOT/scripts/qa/goal-mode-gate.sh" "$ROOT/.githooks/pre-commit" "$ROOT/.githooks/pre-push"
+chmod +x "$ROOT/scripts/install-goal-hooks.sh" "$ROOT/scripts/qa/goal-mode-gate.sh" "$ROOT/.githooks/pre-commit" "$ROOT/.githooks/pre-push"
 git -C "$ROOT" config core.hooksPath .githooks
 
 printf 'Goal Gate hooks installed.\n'

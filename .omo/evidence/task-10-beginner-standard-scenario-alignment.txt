@@ -1,0 +1,35 @@
+TASK 10 executable mode and hook installer QA
+TEMP_REPO_PARENT=/tmp/tmp.vdX0SB6upw
+warning: in the working copy of '.githooks/pre-commit', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.githooks/pre-push', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/ci.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/beginner-codex-user-scenario.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/team-beginner-standard-install.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'install.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'linux/install.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/install-goal-hooks.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/aggregate-completion-state.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/beginner-approval-gate-bash.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/beginner-approval-gate-windows.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/goal-mode-gate.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'windows/install.ps1', LF will be replaced by CRLF the next time Git touches it
+COMMAND: scripts/install-goal-hooks.sh (first run)
+Goal Gate hooks installed.
+pre-commit: scripts/qa/goal-mode-gate.sh --quick
+pre-push:   scripts/qa/goal-mode-gate.sh --full
+COMMAND: scripts/install-goal-hooks.sh (second run for idempotence/repeated interruption probe)
+Goal Gate hooks installed.
+pre-commit: scripts/qa/goal-mode-gate.sh --quick
+pre-push:   scripts/qa/goal-mode-gate.sh --full
+COMMAND: git config core.hooksPath
+.githooks
+COMMAND: git ls-files -s direct-run files
+100755 f7ee0fa6fea2e514c8b0db872030c2178518effa 0	.githooks/pre-commit
+100755 b633dda689bbc8b0f511d5d323cc3383296da338 0	.githooks/pre-push
+100755 5db1b6859e743299691ca9057b0ca80a902c2ef9 0	scripts/install-goal-hooks.sh
+100755 7f8d4adafc1efc116afc6fa1e8e885c60fbd9eb8 0	scripts/qa/goal-mode-gate.sh
+PASS task 10 mode/install-hook QA
+CLEANUP temp repo removed: /tmp/tmp.vdX0SB6upw
+CLEANUP_STATUS=PASS
+EXIT_CODE=0

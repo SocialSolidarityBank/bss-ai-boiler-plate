@@ -7,6 +7,7 @@ source "$_WIZARD_LIB_DIR/wizard-base.sh"
 source "$_WIZARD_LIB_DIR/wizard-github.sh"
 source "$_WIZARD_LIB_DIR/wizard-ai.sh"
 source "$_WIZARD_LIB_DIR/wizard-addons.sh"
+source "$_WIZARD_LIB_DIR/wizard-plan.sh"
 
 run_wizard() {
   local platform="${1:-macos}" choice
@@ -18,7 +19,7 @@ run_wizard() {
   step "ai-boiler-plate 질문형 설치"
   info "한 번에 전부 설치하지 않고 필요한 항목을 질문으로 확인합니다."
   printf '  1) 상태만 보기\n'
-  printf '  2) 1단계 기본 설치 준비\n'
+  printf '  2) Final Installation Plan(최종 설치 계획) 만들기\n'
   printf '  3) GitHub, AI 도구, 추가 도구 설정\n'
   printf '  4) 기존 설치 방식으로 실행\n'
   printf '  5) 종료\n'
@@ -28,10 +29,7 @@ run_wizard() {
       show_status
       ;;
     2|"기본"|"설치")
-      wizard_step_base "$platform"
-      wizard_step_github "$platform"
-      wizard_step_ai_tools "$platform"
-      wizard_step_addons "$platform"
+      wizard_plan_collect_approve_execute "$platform"
       ok "질문형 설치를 마쳤습니다. 상태 파일: $(state_path)"
       ;;
     3|"AI"|"ai")

@@ -122,6 +122,16 @@ if ((-not $self) -or ($self -ne $target)) {
 # ---------------------------------------------------------------------------
 # Load shared helpers + set flags
 # ---------------------------------------------------------------------------
+$Skip = @($Skip)
+if ($Standard) {
+  $Yes = $true
+  $Classic = $true
+  $Skip += 'docker'
+  $env:BSS_AI_INSTALL_CODEX = '1'
+  $env:BSS_AI_INSTALL_CLAUDE = '1'
+  $env:BSS_AI_INSTALL_EXTRAS = '0'
+  $env:HERMES = '0'
+}
 . (Join-Path $Root 'scripts\lib.ps1')
 $script:DryRun    = [bool]$DryRun
 $script:AssumeYes = [bool]$Yes
@@ -133,17 +143,6 @@ $KitVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim
 # ---------------------------------------------------------------------------
 # Step registry
 # ---------------------------------------------------------------------------
-$Skip = @($Skip)
-if ($Standard) {
-  $Yes = $true
-  $Classic = $true
-  $Skip += 'docker'
-  $env:BSS_AI_INSTALL_CODEX = '1'
-  $env:BSS_AI_INSTALL_CLAUDE = '1'
-  $env:BSS_AI_INSTALL_EXTRAS = '0'
-  $env:HERMES = '0'
-}
-
 $StepIds = @('prereqs', 'packages', 'runtimes', 'shell', 'docker', 'git', 'agents', 'resume')
 $StepFile = @{
   prereqs  = '01-prereqs.ps1'
@@ -187,8 +186,11 @@ if (($Wizard -or ((-not $directMode) -and (-not [Console]::IsInputRedirected))) 
   if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
   . (Join-Path $Root 'scripts\recommendations.ps1')
   . (Join-Path $Root 'scripts\wizard.ps1')
+  $script:WizardClassicRequested = $false
   Start-Wizard -Platform 'Windows' -Root $Root
-  if ($script:RunFromFile) { exit 0 } else { return }
+  if (-not $script:WizardClassicRequested) {
+    if ($script:RunFromFile) { exit 0 } else { return }
+  }
 }
 
 if ($NoAgents) { $Skip = @($Skip) + 'agents' }
@@ -221,9 +223,63 @@ function Write-CompletionReport {
   try {
     . $reportScript
     New-HelperReport | ForEach-Object { Write-Info $_ }
+    Add-StepSummaryToLatestReport
   } catch {
     Write-Warn "설치는 끝났지만 결과 리포트/HTML 매뉴얼 생성은 실패했습니다. state 파일과 PowerShell 권한을 확인해 주세요."
     Write-Warn $_.Exception.Message
+  }
+}
+
+function Add-StepSummaryToLatestReport {
+  $report = Get-ReportPath
+  if (-not (Test-Path $report)) { return }
+  $state = Read-HelperState
+  if (-not $state.ContainsKey('steps')) { return }
+  $labels = @{
+    'base-tools' = 'Basic Environment(base-tools)'
+    shell = 'Shell(shell)'
+    github = 'GitHub(github)'
+    'ai-tools' = 'AI CLI Tools(ai-tools)'
+    addons = 'Add-ons(addons)'
+    report = 'Report(report)'
+  }
+  $statusLabels = @{
+    complete = 'complete'
+    skipped = 'skipped'
+    partial = 'partial'
+    failed = 'failed'
+    pending = 'pending'
+    in_progress = 'in_progress'
+  }
+  $lines = @('', '## Install Result')
+  foreach ($key in @('base-tools','shell','github','ai-tools','addons','report')) {
+    if (-not $state['steps'].ContainsKey($key)) { continue }
+    $row = $state['steps'][$key]
+    $status = [string]$row['status']
+    $label = if ($labels.ContainsKey($key)) { $labels[$key] } else { $key }
+    $statusText = if ($statusLabels.ContainsKey($status)) { $statusLabels[$status] } else { $status }
+    $note = if ($row.ContainsKey('note')) { [string]$row['note'] } else { '' }
+    $suffix = if ($note) { " - $note" } else { '' }
+    $lines += "- $($label): $statusText$suffix"
+  }
+  Add-Content -Path $report -Encoding UTF8 -Value $lines
+}
+
+function Set-AggregateStepStatus {
+  param(
+    [Parameter(Mandatory)]$SelectedSet,
+    [Parameter(Mandatory)][string]$Step,
+    [Parameter(Mandatory)][string[]]$RequiredSteps,
+    [Parameter(Mandatory)][string]$CompleteNote,
+    [Parameter(Mandatory)][string]$SkippedNote
+  )
+  $selectedRequired = @($RequiredSteps | Where-Object { $SelectedSet.ContainsKey($_) })
+  if ($selectedRequired.Count -eq $RequiredSteps.Count) {
+    Set-StepStatus -Step $Step -Status 'complete' -Note $CompleteNote
+  } elseif ($selectedRequired.Count -gt 0) {
+    Set-StepStatus -Step $Step -Status 'partial' -Note ("partial: " + ($selectedRequired -join ' '))
+  } else {
+    Set-StepStatus -Step $Step -Status 'skipped' -Note $SkippedNote
   }
 }
 
@@ -232,10 +288,12 @@ function Record-CompletionState {
   $selectedSet = @{}
   foreach ($item in @($selected)) { $selectedSet[$item] = $true }
 
-  if ($selectedSet.ContainsKey('prereqs') -or $selectedSet.ContainsKey('packages') -or $selectedSet.ContainsKey('runtimes')) {
+  Set-AggregateStepStatus -SelectedSet $selectedSet -Step 'base-tools' -RequiredSteps @('prereqs','packages','runtimes') -CompleteNote 'Windows base environment complete' -SkippedNote 'Windows base environment not selected'
+  Set-AggregateStepStatus -SelectedSet $selectedSet -Step 'shell' -RequiredSteps @('shell','resume') -CompleteNote 'PowerShell profile/restart setup complete' -SkippedNote 'shell setup not selected'
+  if ($selectedSet.ContainsKey('prereqs') -and $selectedSet.ContainsKey('packages') -and $selectedSet.ContainsKey('runtimes')) {
     Set-StepStatus -Step 'base-tools' -Status 'complete' -Note 'Windows 기본 환경 설치 완료'
   }
-  if ($selectedSet.ContainsKey('shell') -or $selectedSet.ContainsKey('resume')) {
+  if ($selectedSet.ContainsKey('shell') -and $selectedSet.ContainsKey('resume')) {
     Set-StepStatus -Step 'shell' -Status 'complete' -Note 'PowerShell profile/restart 설정 완료'
   }
   if ($selectedSet.ContainsKey('git')) {

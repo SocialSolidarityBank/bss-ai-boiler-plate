@@ -1,0 +1,85 @@
+TASK 11 context-aware diff and hook QA
+TEMP_REPO_PARENT=/tmp/tmp.NC1Od5MFED
+warning: in the working copy of '.githooks/pre-commit', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.githooks/pre-push', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/ci.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/beginner-codex-user-scenario.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/team-beginner-standard-install.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'install.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'linux/install.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/install-goal-hooks.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/aggregate-completion-state.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/beginner-approval-gate-bash.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/beginner-approval-gate-windows.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/qa/goal-mode-gate.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tracked.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'windows/install.ps1', LF will be replaced by CRLF the next time Git touches it
+SCENARIO staged_whitespace_pre_commit
+warning: in the working copy of 'whitespace.txt', LF will be replaced by CRLF the next time Git touches it
+COMMAND: .githooks/pre-commit
+EXIT_CODE=1
+PASS GOAL-GATE spec-contract
+PASS GOAL-GATE executable-modes
+RUN git diff --cached --check
+whitespace.txt:1: trailing whitespace.
++bad trailing spaces <3 trailing spaces>
+FAIL GOAL-GATE: diff-check failed; see /tmp/tmp.NC1Od5MFED/repo/.omo/evidence/goal-gate-diff-check.txt
+Do not produce final/completion output. Fix the failing contract, then rerun this gate.
+ARTIFACT: .omo/evidence/goal-gate-diff-check.txt
+RUN git diff --cached --check
+whitespace.txt:1: trailing whitespace.
++bad trailing spaces <3 trailing spaces>
+SCENARIO dirty_worktree_tracked_file
+COMMAND: GOAL_GATE_DIFF_CONTEXT=local scripts/qa/goal-mode-gate.sh --quick
+EXIT_CODE=1
+PASS GOAL-GATE spec-contract
+PASS GOAL-GATE executable-modes
+warning: in the working copy of 'tracked.txt', LF will be replaced by CRLF the next time Git touches it
+RUN git diff --check
+warning: in the working copy of 'tracked.txt', LF will be replaced by CRLF the next time Git touches it
+tracked.txt:1: trailing whitespace.
++dirty trailing spaces <3 trailing spaces>
+FAIL GOAL-GATE: diff-check failed; see /tmp/tmp.NC1Od5MFED/repo/.omo/evidence/goal-gate-diff-check.txt
+Do not produce final/completion output. Fix the failing contract, then rerun this gate.
+ARTIFACT: .omo/evidence/goal-gate-diff-check.txt
+warning: in the working copy of 'tracked.txt', LF will be replaced by CRLF the next time Git touches it
+RUN git diff --check
+warning: in the working copy of 'tracked.txt', LF will be replaced by CRLF the next time Git touches it
+tracked.txt:1: trailing whitespace.
++dirty trailing spaces <3 trailing spaces>
+SCENARIO malformed_input
+COMMAND: GOAL_GATE_DIFF_CONTEXT=bogus scripts/qa/goal-mode-gate.sh --quick
+EXIT_CODE=1
+PASS GOAL-GATE spec-contract
+PASS GOAL-GATE executable-modes
+ARTIFACT: .omo/evidence/goal-gate-diff-check.txt
+FAIL GOAL-GATE: unknown GOAL_GATE_DIFF_CONTEXT: bogus
+Do not produce final/completion output. Fix the failing contract, then rerun this gate.
+SCENARIO ci_changed_range_whitespace
+warning: in the working copy of 'ci.txt', LF will be replaced by CRLF the next time Git touches it
+COMMAND: GOAL_GATE_DIFF_CONTEXT=ci GOAL_GATE_CI_BASE=HEAD~1 GOAL_GATE_CI_HEAD=HEAD scripts/qa/goal-mode-gate.sh --quick
+EXIT_CODE=1
+PASS GOAL-GATE spec-contract
+PASS GOAL-GATE executable-modes
+RUN git diff --check HEAD~1 HEAD
+ci.txt:1: trailing whitespace.
++ci trailing spaces <3 trailing spaces>
+FAIL GOAL-GATE: diff-check failed; see /tmp/tmp.NC1Od5MFED/repo/.omo/evidence/goal-gate-diff-check.txt
+Do not produce final/completion output. Fix the failing contract, then rerun this gate.
+ARTIFACT: .omo/evidence/goal-gate-diff-check.txt
+RUN git diff --check HEAD~1 HEAD
+ci.txt:1: trailing whitespace.
++ci trailing spaces <3 trailing spaces>
+SCENARIO stale_state_empty_ci_range
+COMMAND: GOAL_GATE_DIFF_CONTEXT=ci GOAL_GATE_CI_BASE=HEAD GOAL_GATE_CI_HEAD=HEAD scripts/qa/goal-mode-gate.sh --quick
+EXIT_CODE=1
+PASS GOAL-GATE spec-contract
+PASS GOAL-GATE executable-modes
+ARTIFACT: .omo/evidence/goal-gate-diff-check.txt
+FAIL GOAL-GATE: CI diff range has no changed files: HEAD..HEAD
+Do not produce final/completion output. Fix the failing contract, then rerun this gate.
+PASS task 11 context-aware diff QA
+CLEANUP temp repo removed: /tmp/tmp.NC1Od5MFED
+CLEANUP_STATUS=PASS
+EXIT_CODE=0

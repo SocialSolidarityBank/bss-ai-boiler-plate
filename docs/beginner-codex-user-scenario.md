@@ -65,6 +65,12 @@ Codex는 질문을 한 번에 몰아서 던지지 않고, 초보자가 이해할
 2) Linux
 ```
 
+Codex는 초보자에게 Windows와 Linux 차이를 쉬운 말로 설명합니다.
+
+- Windows는 대부분의 개인용 PC에서 쓰는 운영체제입니다. 설치할 때 PowerShell과 `.\windows\install.ps1 -Standard`를 사용합니다.
+- Linux는 서버나 개발용 컴퓨터에서 자주 쓰는 운영체제입니다. 설치할 때 terminal(터미널)과 `./linux/install.sh --standard`를 사용합니다.
+- 초보자가 이미 Windows 컴퓨터에서 Codex를 쓰고 있다면 Windows를 고르는 것을 권장합니다. Linux를 이미 쓰고 있거나 팀에서 Linux를 지정한 경우에만 Linux를 고릅니다.
+
 그다음 Basic Environment(기본 환경)를 확인합니다.
 
 ```text

@@ -5,9 +5,9 @@ source "$_STATE_LIB_DIR/state-paths.sh"
 source "$_STATE_LIB_DIR/state-status.sh"
 
 _state_python() {
-  if command -v python3 >/dev/null 2>&1; then
+  if command -v python3 >/dev/null 2>&1 && python3 --version >/dev/null 2>&1; then
     printf 'python3\n'
-  elif command -v python >/dev/null 2>&1; then
+  elif command -v python >/dev/null 2>&1 && python --version >/dev/null 2>&1; then
     printf 'python\n'
   else
     return 1
@@ -55,6 +55,7 @@ for key, default in [
     ("aiServices", []),
     ("addons", {}),
     ("tools", []),
+    ("installationPlan", {}),
 ]:
     if key not in data:
         data[key] = default
@@ -93,6 +94,7 @@ data.setdefault("ai_services", [])
 data.setdefault("aiServices", data.get("ai_services") or [])
 data.setdefault("addons", {})
 data.setdefault("tools", [])
+data.setdefault("installationPlan", {})
 data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 labels = {
@@ -160,6 +162,41 @@ elif action == "addon":
     if note:
         row["note"] = note
     upsert_tool(title, status, "addon", note)
+elif action == "installation_plan":
+    selected_os, workspace, base_environment, ai_csv, addon_csv, command = args[:6]
+    ai_tools = [x for x in ai_csv.split(",") if x]
+    selected_addons = set(x for x in addon_csv.split(",") if x)
+    addon_rows = {}
+    addon_titles = {
+        "matt-pocock-skills": "Matt Pocock Skills",
+        "superpowers": "Superpowers Planning Pack",
+        "lazy-codex": "Lazy-Codex",
+        "oh-my-claudecode": "oh-my-claudecode",
+    }
+    for addon_id, title in addon_titles.items():
+        addon_rows[addon_id] = {
+            "title": title,
+            "selected": addon_id in selected_addons,
+            "decision": "install" if addon_id in selected_addons else "skip",
+        }
+    data["installationPlan"] = {
+        "schemaVersion": 1,
+        "selectedOS": selected_os,
+        "workspaceFolder": workspace,
+        "baseEnvironment": base_environment,
+        "aiCliTools": ai_tools,
+        "addons": addon_rows,
+        "executionCommand": command,
+        "approvalStatus": "pending",
+        "approvedAt": "",
+        "secretPolicy": "No tokens, OAuth codes, passwords, private keys, or device codes are stored.",
+    }
+elif action == "installation_plan_approve":
+    plan = data.setdefault("installationPlan", {})
+    if not plan:
+        raise SystemExit("installation plan is missing")
+    plan["approvalStatus"] = "approved"
+    plan["approvedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 elif action == "clear":
     data = {
         "version": 1,
@@ -168,6 +205,7 @@ elif action == "clear":
         "aiServices": [],
         "addons": {},
         "tools": [],
+        "installationPlan": {},
         "updated_at": data["updated_at"],
     }
 else:
@@ -232,6 +270,91 @@ state_record_ai_service() {
 
 state_record_addon() {
   _state_update addon "$1" "$2" "$3" "${4:-}"
+}
+
+state_record_installation_plan() {
+  _state_update installation_plan "$1" "$2" "$3" "$4" "$5" "$6"
+}
+
+state_approve_installation_plan() {
+  _state_update installation_plan_approve
+}
+
+state_installation_plan_status() {
+  local path py
+  path="$(state_path)"
+  py="$(_state_python)" || { printf 'missing\n'; return 0; }
+  "$py" - "$path" <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    print("missing")
+    raise SystemExit(0)
+plan = data.get("installationPlan") or {}
+print(plan.get("approvalStatus") or "missing")
+PY
+}
+
+state_installation_plan_field() {
+  local field="$1" path py
+  path="$(state_path)"
+  py="$(_state_python)" || return 1
+  "$py" - "$path" "$field" <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+plan = data.get("installationPlan") or {}
+value = plan.get(sys.argv[2], "")
+if isinstance(value, list):
+    print(",".join(str(x) for x in value))
+elif isinstance(value, dict):
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+else:
+    print(value)
+PY
+}
+
+state_installation_plan_has_ai() {
+  local tool="$1" path py
+  path="$(state_path)"
+  py="$(_state_python)" || return 1
+  "$py" - "$path" "$tool" <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+tools = data.get("installationPlan", {}).get("aiCliTools") or []
+raise SystemExit(0 if sys.argv[2] in tools else 1)
+PY
+}
+
+state_installation_plan_selected_addons() {
+  local path py
+  path="$(state_path)"
+  py="$(_state_python)" || return 1
+  "$py" - "$path" <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+addons = data.get("installationPlan", {}).get("addons") or {}
+for addon_id, row in addons.items():
+    if isinstance(row, dict) and row.get("selected"):
+        print(addon_id)
+PY
 }
 
 state_clear_resume() {
