@@ -123,15 +123,6 @@ if ((-not $self) -or ($self -ne $target)) {
 # Load shared helpers + set flags
 # ---------------------------------------------------------------------------
 $Skip = @($Skip)
-if ($Standard) {
-  $Yes = $true
-  $Classic = $true
-  $Skip += 'docker'
-  $env:BSS_AI_INSTALL_CODEX = '1'
-  $env:BSS_AI_INSTALL_CLAUDE = '1'
-  $env:BSS_AI_INSTALL_EXTRAS = '0'
-  $env:HERMES = '0'
-}
 . (Join-Path $Root 'scripts\lib.ps1')
 $script:DryRun    = [bool]$DryRun
 $script:AssumeYes = [bool]$Yes
@@ -181,6 +172,100 @@ if ($ResetState) {
   }
   if ($script:RunFromFile) { exit 0 } else { return }
 }
+
+function Add-SkippedStep {
+  param([Parameter(Mandatory)][string]$Id)
+  if (@($script:Skip) -notcontains $Id) { $script:Skip = @($script:Skip) + $Id }
+}
+
+function Stop-StandardPlan {
+  param([Parameter(Mandatory)][string]$Message)
+  Write-Info '-Standard is the Standard Execution Preset for an approved Final Installation Plan.'
+  Write-Info $Message
+  Write-Info 'Create the plan with -Wizard first, then approve it by entering "승인" or "진행".'
+  if ($script:RunFromFile) { exit 2 } else { throw $Message }
+}
+
+function Use-ApprovedStandardPlan {
+  $status = Get-InstallationPlanStatus
+  if ($status -ne 'approved') {
+    Stop-StandardPlan 'No approved installationPlan exists, so no install steps were started.'
+  }
+
+  $planOs = Get-InstallationPlanField -Field 'selectedOS'
+  if ($planOs -ne 'Windows') {
+    Stop-StandardPlan "The approved installationPlan is for '$planOs', not Windows."
+  }
+
+  $script:Yes = $true
+  $script:AssumeYes = $true
+  $script:Classic = $true
+  Add-SkippedStep -Id 'docker'
+
+  $baseEnvironment = Get-InstallationPlanField -Field 'baseEnvironment'
+  if ($baseEnvironment -ne 'install') {
+    foreach ($id in @('prereqs', 'packages', 'runtimes', 'shell', 'git', 'resume')) {
+      Add-SkippedStep -Id $id
+    }
+  }
+
+  $env:BSS_AI_INSTALL_CODEX = '0'
+  $env:BSS_AI_INSTALL_CLAUDE = '0'
+  $env:BSS_AI_INSTALL_MATT = '0'
+  $env:BSS_AI_INSTALL_EXTRAS = '0'
+  $env:HERMES = '0'
+  if (Test-InstallationPlanHasAi -Tool 'Codex CLI') { $env:BSS_AI_INSTALL_CODEX = '1' }
+  if (Test-InstallationPlanHasAi -Tool 'Claude Code CLI') { $env:BSS_AI_INSTALL_CLAUDE = '1' }
+  if (-not (Get-InstallationPlanField -Field 'aiCliTools')) { Add-SkippedStep -Id 'agents' }
+
+  Write-Info "Using approved Final Installation Plan: $(Get-InstallationPlanField -Field 'executionCommand')"
+}
+
+function Invoke-StandardPlanAddons {
+  if (-not $Standard) { return }
+  . (Join-Path $Root 'scripts\recommendations.ps1')
+
+  $selectedAddons = @(Get-InstallationPlanSelectedAddons)
+  if ($selectedAddons.Count -eq 0) {
+    Set-StepStatus -Step 'addons' -Status 'skipped' -Note 'no add-ons selected in approved plan'
+    return
+  }
+
+  foreach ($id in $selectedAddons) {
+    $title = Get-RecommendationTitle -Id $id
+    $commands = @(Get-RecommendationInstallCommand -Id $id)
+    if ($commands.Count -eq 0 -or ($commands.Count -eq 1 -and $commands[0] -eq 'status-only')) {
+      Write-Info "$title is a status-only item; no install command was run."
+      Set-AddonStatus -Id $id -Title $title -Status 'skipped' -Note 'status-only'
+      continue
+    }
+    if ($script:DryRun) {
+      foreach ($cmd in $commands) { Write-Info "[dry-run] would run: $cmd" }
+      Set-AddonStatus -Id $id -Title $title -Status 'complete' -Note 'dry-run install approved'
+      Set-StepStatus -Step 'addons' -Status 'complete' -Note "$title dry-run"
+      continue
+    }
+
+    $ok = $true
+    foreach ($cmd in $commands) {
+      & cmd.exe /c $cmd
+      if ($LASTEXITCODE -ne 0) {
+        $ok = $false
+        break
+      }
+    }
+    if ($ok) {
+      Set-AddonStatus -Id $id -Title $title -Status 'complete' -Note 'installed'
+      Set-StepStatus -Step 'addons' -Status 'complete' -Note "$title installed"
+    } else {
+      Set-AddonStatus -Id $id -Title $title -Status 'failed' -Note 'install failed'
+      Stop-Kit "$title add-on install failed."
+    }
+  }
+}
+
+if ($Standard) { Use-ApprovedStandardPlan }
+
 $directMode = [bool]($Classic -or $Yes -or $Only.Count -gt 0 -or $Skip.Count -gt 0 -or $NoAgents)
 if (($Wizard -or ((-not $directMode) -and (-not [Console]::IsInputRedirected))) -and -not $Classic)  {
   if (-not (Test-IsWindows)) { Stop-Kit "This kit targets Windows only." }
@@ -339,6 +424,8 @@ foreach ($id in $selected) {
     & $StepFunc[$id]
   }
 }
+
+Invoke-StandardPlanAddons
 
 if (-not $script:DryRun) {
   Write-Step "Install result manual"

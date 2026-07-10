@@ -148,6 +148,17 @@ function Show-WizardFinalPlan {
   $targetDir = Join-Path (Join-Path (Join-Path $homeDir 'Documents') 'Codex') 'bss-ai-boiler-plate'
   $selectedAddons = @($Plan.addons | Where-Object { $_.install } | ForEach-Object { $_.title })
   $skippedAddons = @($Plan.addons | Where-Object { -not $_.install } | ForEach-Object { $_.title })
+  $selectedAddonIds = @($Plan.addons | Where-Object { $_.install } | ForEach-Object { $_.id })
+  $baseEnvironment = if ($Plan.includeBase -and $Plan.base.install) { 'install' } else { 'skip' }
+  $executionCommand = '.\windows\install.ps1 -Standard'
+
+  Set-InstallationPlan `
+    -SelectedOS $Plan.platform `
+    -WorkspaceFolder $targetDir `
+    -BaseEnvironment $baseEnvironment `
+    -AiCliTools @($Plan.ai.services) `
+    -SelectedAddons $selectedAddonIds `
+    -ExecutionCommand $executionCommand
 
   Write-Output ''
   Write-Output 'Final Installation Plan(최종 설치 계획)'
@@ -169,6 +180,7 @@ function Show-WizardFinalPlan {
     Write-Output "- 추가 기능 미설치: $($skippedAddons -join ', ')"
   }
   Write-Output '- 실행 프리셋: .\windows\install.ps1 -Standard 흐름과 같은 Windows 초보자 표준 선택'
+  Write-Output "- 계획 저장 위치: $(Get-StatePath)"
   Write-Output ''
   Write-Output '시작하려면 "승인" 또는 "진행"이라고 입력하세요.'
 }
@@ -303,6 +315,7 @@ function Start-WizardPlanFlow {
     Write-Warn '승인 또는 진행이 아니어서 설치를 시작하지 않습니다.'
     return
   }
+  Approve-InstallationPlan
   Invoke-WizardPlan -Plan $plan -Root $Root
   Write-Ok "질문형 설치를 마쳤습니다. 상태 파일: $(Get-StatePath)"
 }
