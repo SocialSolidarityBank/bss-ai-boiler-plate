@@ -19,7 +19,7 @@ jobs:
     name: shellcheck + syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: bash syntax (3.2-safe parse)
@@ -34,7 +34,7 @@ jobs:
     name: linux shellcheck + syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: bash syntax
@@ -49,7 +49,7 @@ jobs:
     name: lane 3 fake-home QA
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: run lane 3 scripted QA
         env:
           AI_BOILER_PLATE_HOME: ${{ runner.temp }}/ai-boiler-plate-home
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: install (non-interactive; skip Docker; HERMES off for speed)
         env:
@@ -151,7 +151,7 @@ jobs:
           # GITHUB_ENV) so every later rebuild keeps them.
           echo "$PATH" | tr ':' '\n' >> "$GITHUB_PATH"
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: install (non-interactive; skip Docker; HERMES off for speed)
         env:
@@ -197,7 +197,7 @@ jobs:
     name: windows powershell parse
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: parse all .ps1 (PowerShell is preinstalled on the runner)
         shell: pwsh
         run: |
@@ -224,7 +224,7 @@ jobs:
     name: macOS dry-run
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./install.sh --dry-run
       - run: ./uninstall.sh --dry-run --yes
 
@@ -233,7 +233,7 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: install (non-interactive)
         # plain run: non-tty so Colima start is auto-declined; everything else runs.
@@ -284,7 +284,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: check winget (preinstalled on windows-2025 image)
         shell: pwsh
